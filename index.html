@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 汽配/工业品数据处理中心 (云端团队版)</title>
+    <title>Shopify 汽配/工业品数据处理中心 (账号云端版)</title>
     <!-- 引入 Supabase 云数据库 SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -25,17 +25,26 @@
         header { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 20px 24px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; }
         h1 { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
         .badge { background: #e4f5ed; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-        .badge-cloud { background: #e0f2fe; color: #0284c7; }
-
+        
         .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
         .btn:hover { background: var(--primary-hover); }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
         .btn-outline:hover { background: #f1f2f3; }
         .btn-sm { padding: 4px 8px; font-size: 12px; }
 
+        /* 登录弹窗 */
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .auth-card { background: var(--surface); padding: 32px; border-radius: 12px; width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .auth-input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
+
         .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
         .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 24px; }
         .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* 三大功能独立面板标签页 */
+        .tab-menu { display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+        .tab-btn { padding: 8px 16px; cursor: pointer; border: none; background: transparent; font-weight: 600; color: var(--subtext); border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
 
         .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafbfb; }
         .upload-area:hover { border-color: var(--primary); background: #f0fdf4; }
@@ -49,17 +58,33 @@
         .mapping-table th, .mapping-table td, .history-table th, .history-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
         .mapping-table select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); }
 
-        .log-box { background: #1a1c1d; color: #a6e22e; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; height: 180px; overflow-y: auto; white-space: pre-wrap; }
+        .log-box { background: #1a1c1d; color: #a6e22e; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; height: 160px; overflow-y: auto; white-space: pre-wrap; }
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; }
         .stat-card { background: #f6f6f7; padding: 12px; border-radius: 8px; }
         .stat-num { font-size: 22px; font-weight: 700; color: var(--primary); }
     </style>
 </head>
 <body>
+    <!-- 登录界面蒙版 -->
+    <div class="auth-overlay" id="authModal">
+        <div class="auth-card">
+            <h2 style="margin-bottom: 8px; text-align: center;">团队账号登录</h2>
+            <p style="font-size: 13px; color: var(--subtext); margin-bottom: 20px; text-align: center;">登录后加载个人/团队专属云端历史面板</p>
+            <input type="email" id="authEmail" class="auth-input" placeholder="输入邮箱账号">
+            <input type="password" id="authPassword" class="auth-input" placeholder="输入密码">
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="flex: 1; justify-content: center;" onclick="handleLogin()">登录系统</button>
+                <button class="btn btn-outline" style="flex: 1; justify-content: center;" onclick="handleSignUp()">注册新账号</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge badge-cloud">☁️ 团队云端实时同步中</span></h1>
-            <div>
+            <h1>📦 Shopify 数据处理中心 <span class="badge">☁️ 账号数据云同步</span></h1>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span id="userStatus" style="font-size: 13px; color: var(--subtext);">未登录</span>
+                <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
                 <button class="btn btn-outline" onclick="triggerTemplateUpload()">⚙️ 更新 Shopify 模板表</button>
                 <input type="file" id="templateInput" style="display:none" onchange="handleTemplateUpload(event)">
             </div>
@@ -78,9 +103,7 @@
                 </div>
 
                 <div class="card" id="mappingCard" style="display: none;">
-                    <div class="card-title">
-                        2. 字段映射配置（已与团队云端记忆同步）
-                    </div>
+                    <div class="card-title">2. 字段映射配置（云端自动学习记忆）</div>
                     <table class="mapping-table">
                         <thead>
                             <tr><th>Shopify 目标字段</th><th>对应侵权表字段</th></tr>
@@ -89,22 +112,27 @@
                     </table>
                 </div>
 
-                <!-- 历史处理与记录追溯 -->
+                <!-- 三大功能独立历史追溯面板 -->
                 <div class="card">
-                    <div class="card-title">📜 团队历史导出追溯与下载 (云端永久存储)</div>
+                    <div class="card-title">📜 独立功能云端历史工作表存储与下载</div>
+                    <div class="tab-menu">
+                        <button class="tab-btn active" onclick="switchTab('publish')">📤 上架生成表历史</button>
+                        <button class="tab-btn" onclick="switchTab('archive')">🚫 违规归档表历史</button>
+                        <button class="tab-btn" onclick="switchTab('white_img')">🖼️ 首图白底表历史</button>
+                    </div>
                     <table class="history-table">
                         <thead>
-                            <tr><th>导出时间</th><th>总件数</th><th>违规数</th><th>状态</th><th>操作</th></tr>
+                            <tr><th>导出时间</th><th>记录文件名</th><th>数据件数</th><th>状态</th><th>操作</th></tr>
                         </thead>
                         <tbody id="historyBody">
-                            <tr><td colspan="5" style="text-align: center; color: var(--subtext);">正在连接云端历史数据...</td></tr>
+                            <tr><td colspan="5" style="text-align: center; color: var(--subtext);">请先登录账号以加载历史文件...</td></tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="card">
                     <div class="card-title">处理日志</div>
-                    <div class="log-box" id="logBox">[系统初始化完成] 正在连接云端数据库...\n</div>
+                    <div class="log-box" id="logBox">[系统初始化完成] 正在建立安全云端链接...\n</div>
                 </div>
             </main>
 
@@ -161,12 +189,13 @@
     </div>
 
     <script>
-        // 内置已配置好的 Supabase API 路径与密钥
+        // 内置已配好的完整 Supabase 终端及 API Key
         const SUPABASE_URL = "https://apuotgbljoepgbvueuwr.supabase.co";
-        // 请把你在 Supabase 复制的 Publishable key 粘贴替换下方双引号里的内容
-        const SUPABASE_KEY = "sb_publishable_le5RiJtjMsbP7zyhILJy1Q_uwdmshH-"; 
+        const SUPABASE_KEY = "sb_publishable_le5RiJtjMsbP7zyhILJy1Q_uwdmshH-";
 
         let supabaseClient = null;
+        let currentUser = null;
+        let currentTab = 'publish';
         let rawData = [], rawHeaders = [], mappedData = [];
 
         let fieldMapping = {
@@ -182,29 +211,68 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        function initSupabase(sb_publishable_le5RiJtjMsbP7zyhILJy1Q_uwdmshH-) {
+        function initSupabase() {
             try {
-                if(SUPABASE_KEY === "在这里粘贴你的_Publishable_key") {
-                    log("⚠️ 提示：请在代码第 185 行填入你的 Supabase Publishable Key");
-                    return;
-                }
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                log("☁️ 已成功连接至团队 Supabase 云端数据库！");
-                fetchHistory();
-            } catch(e) {
-                log("❌ 云数据库连接异常：" + e.message);
+                checkUserSession();
+            } catch(e) { log("❌ 数据库连接异常：" + e.message); }
+        }
+
+        async function checkUserSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if(session) {
+                currentUser = session.user;
+                document.getElementById('authModal').style.display = 'none';
+                document.getElementById('userStatus').innerText = `👤 登录账号: ${currentUser.email}`;
+                document.getElementById('logoutBtn').style.display = 'inline-block';
+                log(`🔐 已成功验证用户凭证 [${currentUser.email}]`);
+                fetchHistoryByTab(currentTab);
+            } else {
+                document.getElementById('authModal').style.display = 'flex';
             }
         }
 
-        async function fetchHistory() {
-            if(!supabaseClient) return;
-            const { data, error } = await supabaseClient.from('history_records').select('*').order('created_at', { ascending: false });
-            
+        async function handleLogin() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if(error) alert("登录失败：" + error.message);
+            else checkUserSession();
+        }
+
+        async function handleSignUp() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
+            if(error) alert("注册失败：" + error.message);
+            else alert("注册成功！请直接点击登录");
+        }
+
+        async function handleLogout() {
+            await supabaseClient.auth.signOut();
+            location.reload();
+        }
+
+        function switchTab(tabType) {
+            currentTab = tabType;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            fetchHistoryByTab(tabType);
+        }
+
+        async function fetchHistoryByTab(type) {
+            if(!supabaseClient || !currentUser) return;
+            const { data, error } = await supabaseClient
+                .from('user_history_records')
+                .select('*')
+                .eq('feature_type', type)
+                .order('created_at', { ascending: false });
+
             const tbody = document.getElementById('historyBody');
             tbody.innerHTML = '';
 
             if(error || !data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--subtext);">暂无历史导出记录</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--subtext);">此分类下暂无保存的表格数据</td></tr>';
                 return;
             }
 
@@ -212,10 +280,10 @@
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${new Date(item.created_at).toLocaleString()}</td>
-                    <td>${item.total_count}</td>
-                    <td><span style="color:var(--danger)">${item.violate_count}</span></td>
-                    <td><span class="badge">已同步</span></td>
-                    <td><button class="btn btn-outline btn-sm" onclick='downloadHistoryData(${JSON.stringify(item.csv_data)})'>重新下载</button></td>
+                    <td><b>${item.file_name}</b></td>
+                    <td>${item.total_count} 件</td>
+                    <td><span class="badge">已持久存储</span></td>
+                    <td><button class="btn btn-outline btn-sm" onclick='downloadHistoryCSV(${JSON.stringify(item.csv_content)}, "${item.file_name}")'>重新下载 CSV</button></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -287,6 +355,7 @@
             if(rawData.length === 0) { alert("请先上传数据文件！"); return; }
 
             log("⏳ 开始执行自动化处理流程...");
+            let doPublish = document.getElementById('proc1').checked;
             let doArchive = document.getElementById('proc2').checked;
             let doWhite = document.getElementById('proc3').checked;
 
@@ -318,53 +387,47 @@
 
             log(`🎉 处理完成！合规: ${pass} 件，归档/违规: ${violate} 件`);
 
-            // 自动同步至团队云端
-            if(supabaseClient) {
-                const { error } = await supabaseClient.from('history_records').insert([
-                    { total_count: rawData.length, violate_count: violate, csv_data: mappedData }
-                ]);
-                if(!error) { 
-                    log("☁️ 数据已同步上云！团队所有人均可追溯此记录"); 
-                    fetchHistory(); 
-                } else {
-                    log("⚠️ 数据上传失败，请检查 Supabase 表创建与权限：" + error.message);
+            // 云端独立分类持久保存
+            if(supabaseClient && currentUser) {
+                let headers = ['Title', 'SKU', 'Price', 'Image Src', 'Status'];
+                let csvText = headers.join(',') + '\n' + mappedData.map(r => headers.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+
+                if(doPublish) {
+                    await supabaseClient.from('user_history_records').insert([{ user_id: currentUser.id, feature_type: 'publish', file_name: `Shopify上架表_${new Date().toISOString().slice(0,10)}.csv`, total_count: pass, csv_content: csvText }]);
                 }
+                if(doArchive) {
+                    await supabaseClient.from('user_history_records').insert([{ user_id: currentUser.id, feature_type: 'archive', file_name: `违规归档下架表_${new Date().toISOString().slice(0,10)}.csv`, total_count: violate, csv_content: csvText }]);
+                }
+                if(doWhite) {
+                    await supabaseClient.from('user_history_records').insert([{ user_id: currentUser.id, feature_type: 'white_img', file_name: `首图白底替换表_${new Date().toISOString().slice(0,10)}.csv`, total_count: rawData.length, csv_content: csvText }]);
+                }
+
+                log("☁️ 对应功能的表格已成功同步写入个人云端数据面板！");
+                fetchHistoryByTab(currentTab);
             }
         }
 
         function downloadCSV() {
-            if(mappedData.length === 0) { alert("请先执行自动化处理！"); return; }
-            exportDataToCSV(mappedData);
-        }
-
-        function downloadHistoryData(data) {
-            exportDataToCSV(data);
-        }
-
-        function exportDataToCSV(dataList) {
+            if(mappedData.length === 0) { alert("请先执行处理！"); return; }
             let headers = ['Title', 'SKU', 'Price', 'Image Src', 'Status'];
-            let csvContent = headers.join(',') + '\n';
+            let csvText = headers.join(',') + '\n' + mappedData.map(r => headers.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+            downloadHistoryCSV(csvText, `Shopify_Process_${new Date().toISOString().slice(0,10)}.csv`);
+        }
 
-            dataList.forEach(row => {
-                let line = headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(',');
-                csvContent += line + '\n';
-            });
-
-            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        function downloadHistoryCSV(content, filename) {
+            const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Shopify_Process_Result_${new Date().toISOString().slice(0,10)}.csv`;
+            a.download = filename;
             a.click();
-            log("💾 已经成功下载 CSV 结果文件");
+            log(`💾 已成功下载文件: ${filename}`);
         }
 
         function triggerTemplateUpload() { document.getElementById('templateInput').click(); }
-        function handleTemplateUpload(e) { if(e.target.files[0]) log("⚙️ 已更新默认模板！"); }
+        function handleTemplateUpload(e) { if(e.target.files[0]) log("⚙️ 已更新通用 Shopify 模板！"); }
 
-        window.onload = function() {
-            initSupabase();
-        }
+        window.onload = function() { initSupabase(); }
     </script>
 </body>
 </html>
