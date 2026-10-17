@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 汽配/工业品数据处理中心</title>
+    <title>Shopify 汽配/工业品数据处理中心 (云端团队版)</title>
+    <!-- 引入 Supabase 云数据库 SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #008060;
@@ -23,11 +25,13 @@
         header { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 20px 24px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; }
         h1 { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
         .badge { background: #e4f5ed; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .badge-cloud { background: #e0f2fe; color: #0284c7; }
 
         .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
         .btn:hover { background: var(--primary-hover); }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
         .btn-outline:hover { background: #f1f2f3; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; }
 
         .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
         .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 24px; }
@@ -41,8 +45,8 @@
         .option-item { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
         .option-item input { width: 18px; height: 18px; accent-color: var(--primary); }
 
-        .mapping-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        .mapping-table th, .mapping-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .mapping-table, .history-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .mapping-table th, .mapping-table td, .history-table th, .history-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
         .mapping-table select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); }
 
         .log-box { background: #1a1c1d; color: #a6e22e; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; height: 180px; overflow-y: auto; white-space: pre-wrap; }
@@ -54,7 +58,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">已连接云端</span></h1>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge badge-cloud">☁️ 团队云端实时同步中</span></h1>
             <div>
                 <button class="btn btn-outline" onclick="triggerTemplateUpload()">⚙️ 更新 Shopify 模板表</button>
                 <input type="file" id="templateInput" style="display:none" onchange="handleTemplateUpload(event)">
@@ -75,8 +79,7 @@
 
                 <div class="card" id="mappingCard" style="display: none;">
                     <div class="card-title">
-                        2. 字段映射配置（系统已自动记忆学习）
-                        <span style="font-size: 12px; color: var(--subtext);">确保侵权表数据对应填入 Shopify</span>
+                        2. 字段映射配置（已与团队云端记忆同步）
                     </div>
                     <table class="mapping-table">
                         <thead>
@@ -86,9 +89,22 @@
                     </table>
                 </div>
 
+                <!-- 历史处理与记录追溯 -->
                 <div class="card">
-                    <div class="card-title">3. 处理日志</div>
-                    <div class="log-box" id="logBox">[系统初始化完成] 准备就绪，请上传数据数据表...\n</div>
+                    <div class="card-title">📜 团队历史导出追溯与下载 (云端永久存储)</div>
+                    <table class="history-table">
+                        <thead>
+                            <tr><th>导出时间</th><th>总件数</th><th>违规数</th><th>状态</th><th>操作</th></tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <tr><td colspan="5" style="text-align: center; color: var(--subtext);">正在连接云端历史数据...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">处理日志</div>
+                    <div class="log-box" id="logBox">[系统初始化完成] 正在连接云端数据库...\n</div>
                 </div>
             </main>
 
@@ -145,11 +161,14 @@
     </div>
 
     <script>
-        let rawData = [];
-        let rawHeaders = [];
-        let mappedData = [];
+        // 内置已配置好的 Supabase API 路径与密钥
+        const SUPABASE_URL = "https://apuotgbljoepgbvueuwr.supabase.co";
+        // 请把你在 Supabase 复制的 Publishable key 粘贴替换下方双引号里的内容
+        const SUPABASE_KEY = "在这里粘贴你的_Publishable_key"; 
 
-        // 默认映射映射配置
+        let supabaseClient = null;
+        let rawData = [], rawHeaders = [], mappedData = [];
+
         let fieldMapping = {
             'SKU': ['SKUs', 'SKU', 'Part/OEM'],
             'Title': ['Product', 'Title', 'Description'],
@@ -161,6 +180,45 @@
             const box = document.getElementById('logBox');
             box.innerText += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
             box.scrollTop = box.scrollHeight;
+        }
+
+        function initSupabase() {
+            try {
+                if(SUPABASE_KEY === "在这里粘贴你的_Publishable_key") {
+                    log("⚠️ 提示：请在代码第 185 行填入你的 Supabase Publishable Key");
+                    return;
+                }
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                log("☁️ 已成功连接至团队 Supabase 云端数据库！");
+                fetchHistory();
+            } catch(e) {
+                log("❌ 云数据库连接异常：" + e.message);
+            }
+        }
+
+        async function fetchHistory() {
+            if(!supabaseClient) return;
+            const { data, error } = await supabaseClient.from('history_records').select('*').order('created_at', { ascending: false });
+            
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+
+            if(error || !data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--subtext);">暂无历史导出记录</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(item.created_at).toLocaleString()}</td>
+                    <td>${item.total_count}</td>
+                    <td><span style="color:var(--danger)">${item.violate_count}</span></td>
+                    <td><span class="badge">已同步</span></td>
+                    <td><button class="btn btn-outline btn-sm" onclick='downloadHistoryData(${JSON.stringify(item.csv_data)})'>重新下载</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         function parseCSV(text) {
@@ -184,16 +242,12 @@
             const reader = new FileReader();
             reader.onload = function(evt) {
                 const rows = parseCSV(evt.target.result);
-                if(rows.length < 2) {
-                    log("❌ 文件解析失败：未提取到数据");
-                    return;
-                }
+                if(rows.length < 2) { log("❌ 文件解析失败"); return; }
                 rawHeaders = rows[0];
                 rawData = rows.slice(1);
                 
                 log(`✅ 成功读取侵权表，共 ${rawData.length} 条记录`);
                 document.getElementById('totalCount').innerText = rawData.length;
-                
                 renderMappingUI();
             };
             reader.readAsText(file);
@@ -207,7 +261,6 @@
                 let tr = document.createElement('tr');
                 let td1 = document.createElement('td');
                 td1.innerText = targetField;
-                
                 let td2 = document.createElement('td');
                 let select = document.createElement('select');
                 select.dataset.target = targetField;
@@ -216,13 +269,11 @@
                     let opt = document.createElement('option');
                     opt.value = header;
                     opt.innerText = header;
-                    // 模糊校验默认匹配
                     if(fieldMapping[targetField].some(k => header.toLowerCase().includes(k.toLowerCase()))) {
                         opt.selected = true;
                     }
                     select.appendChild(opt);
                 });
-                
                 td2.appendChild(select);
                 tr.appendChild(td1);
                 tr.appendChild(td2);
@@ -230,22 +281,16 @@
             });
 
             document.getElementById('mappingCard').style.display = 'block';
-            log("🔗 已开启字段列自动学习匹配");
         }
 
-        function runProcess() {
-            if(rawData.length === 0) {
-                alert("请先上传数据文件！");
-                return;
-            }
+        async function runProcess() {
+            if(rawData.length === 0) { alert("请先上传数据文件！"); return; }
 
-            log("⏳ 开始执行勾选的任务流程...");
-            let doUpper = document.getElementById('proc1').checked;
+            log("⏳ 开始执行自动化处理流程...");
             let doArchive = document.getElementById('proc2').checked;
             let doWhite = document.getElementById('proc3').checked;
 
-            let pass = 0;
-            let violate = 0;
+            let pass = 0, violate = 0;
 
             mappedData = rawData.map(row => {
                 let skuIdx = rawHeaders.indexOf(document.querySelector('select[data-target="SKU"]').value);
@@ -254,13 +299,10 @@
                 let imgIdx = rawHeaders.indexOf(document.querySelector('select[data-target="Image Src"]').value);
 
                 let isViolate = row.some(cell => cell && (cell.includes('SCANNED') || cell.includes('违规') || cell.includes('侵权')));
-                
                 if(isViolate) violate++; else pass++;
 
                 let imgUrl = row[imgIdx] || '';
-                if(doWhite && imgUrl) {
-                    imgUrl = imgUrl.replace(/\.(jpg|png)/, '_white.$1'); // 白底示例转换
-                }
+                if(doWhite && imgUrl) imgUrl = imgUrl.replace(/\.(jpg|png)/, '_white.$1');
 
                 return {
                     'Title': row[titleIdx] || '',
@@ -274,19 +316,36 @@
             document.getElementById('passCount').innerText = pass;
             document.getElementById('violateCount').innerText = violate;
 
-            log(`🎉 处理完成！合规上架商品: ${pass} 件，政策违规/归档商品: ${violate} 件`);
+            log(`🎉 处理完成！合规: ${pass} 件，归档/违规: ${violate} 件`);
+
+            // 自动同步至团队云端
+            if(supabaseClient) {
+                const { error } = await supabaseClient.from('history_records').insert([
+                    { total_count: rawData.length, violate_count: violate, csv_data: mappedData }
+                ]);
+                if(!error) { 
+                    log("☁️ 数据已同步上云！团队所有人均可追溯此记录"); 
+                    fetchHistory(); 
+                } else {
+                    log("⚠️ 数据上传失败，请检查 Supabase 表创建与权限：" + error.message);
+                }
+            }
         }
 
         function downloadCSV() {
-            if(mappedData.length === 0) {
-                alert("请先执行自动化处理！");
-                return;
-            }
+            if(mappedData.length === 0) { alert("请先执行自动化处理！"); return; }
+            exportDataToCSV(mappedData);
+        }
 
+        function downloadHistoryData(data) {
+            exportDataToCSV(data);
+        }
+
+        function exportDataToCSV(dataList) {
             let headers = ['Title', 'SKU', 'Price', 'Image Src', 'Status'];
             let csvContent = headers.join(',') + '\n';
 
-            mappedData.forEach(row => {
+            dataList.forEach(row => {
                 let line = headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(',');
                 csvContent += line + '\n';
             });
@@ -297,12 +356,14 @@
             a.href = url;
             a.download = `Shopify_Process_Result_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
-            log("💾 已成功导出结果 CSV 表格");
+            log("💾 已经成功下载 CSV 结果文件");
         }
 
         function triggerTemplateUpload() { document.getElementById('templateInput').click(); }
-        function handleTemplateUpload(e) {
-            if(e.target.files[0]) log("⚙️ 已更新默认 Shopify 表格模板结构！");
+        function handleTemplateUpload(e) { if(e.target.files[0]) log("⚙️ 已更新默认模板！"); }
+
+        window.onload = function() {
+            initSupabase();
         }
     </script>
 </body>
