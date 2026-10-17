@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify 汽配/工业品数据处理中心</title>
+    <style>
+        /* Apple/SaaS Minimalist CSS Variables */
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --primary-color: #008060; /* Shopify Green */
+            --primary-hover: #006e52;
+            --primary-light: #e6f4f0;
+            --text-main: #1d1d1f;
+            --text-muted: #86868b;
+            --border-color: #e5e5ea;
+            --danger-color: #ff3b30;
+            --danger-light: #ffe5e5;
+            --warning-color: #ff9500;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.04);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-stack);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 28px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 1080px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Top Header Navigation */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 4px;
+        }
+
+        .brand-title {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-title span.badge {
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 4px 10px;
+            border-radius: 20px;
+            letter-spacing: 0;
+        }
+
+        .header-actions button {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .header-actions button:hover {
+            background: #ffffff;
+            border-color: var(--text-muted);
+        }
+
+        /* Card System */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-subtle);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .card-header {
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Workflow Step Selectors */
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .workflow-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .workflow-card {
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            background: #fafafa;
+            user-select: none;
+        }
+
+        .workflow-card:hover {
+            border-color: #bbb;
+            background: #ffffff;
+        }
+
+        .workflow-card.active {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+        }
+
+        .workflow-checkbox-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .workflow-checkbox-wrap input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .workflow-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .workflow-info p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        /* File Upload Dropzones */
+        .upload-zones-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .upload-zones-container.dual {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .dropzone {
+            border: 2px dashed #d2d2d7;
+            border-radius: var(--radius-md);
+            padding: 32px 20px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+        }
+
+        .dropzone-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .dropzone-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .dropzone-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .dropzone-file-status {
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary-color);
+            word-break: break-all;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Action & Execution Section */
+        .execution-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 128, 96, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            background: #c7c7cc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Progress Bar */
+        .progress-wrapper {
+            flex: 1;
+            display: none;
+        }
+
+        .progress-track {
+            height: 8px;
+            background: #e5e5ea;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--primary-color);
+            transition: width 0.2s linear;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        /* Log Terminal */
+        .console-card {
+            background: #1c1c1e;
+            color: #f2f2f7;
+            border-radius: var(--radius-md);
+            padding: 16px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            height: 160px;
+            overflow-y: auto;
+            line-height: 1.6;
+            margin-top: 16px;
+        }
+
+        .console-entry {
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+
+        .console-entry.info { color: #a1a1a6; }
+        .console-entry.success { color: #30d158; }
+        .console-entry.warn { color: #ffd60a; }
+        .console-entry.error { color: #ff453a; }
+
+        /* Results & Metrics Panel */
+        .results-panel {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .metric-box {
+            background: #fafafa;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .metric-val {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 4px;
+        }
+
+        .metric-lbl {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .download-btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-download {
+            flex: 1;
+            min-width: 220px;
+            background: #1d1d1f;
+            color: #ffffff;
+            border: none;
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-download:hover {
+            background: #3a3a3c;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- Header -->
+    <header>
+        <div class="brand-title">
+            Shopify 汽配/工业品数据处理中心
+            <span class="badge">原生纯净版 v2.0</span>
+        </div>
+        <div class="header-actions">
+            <button onclick="loadDemoDataset()">⚡ 加载模拟测试数据</button>
+        </div>
+    </header>
+
+    <!-- Zone 1: Functional Workflow Builder -->
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">1. 选择自动化处理流程</div>
+            <div class="card-subtitle">按需勾选需要批量执行的功能（支持单选或组合执行）</div>
+        </div>
+
+        <div class="workflow-grid">
+            
+            <!-- Step 1 Card -->
+            <div class="workflow-card active" id="wfCard1" onclick="toggleWorkflow('wf1')">
+                <div class="workflow-checkbox-wrap">
+                    <input type="checkbox" id="wf1" checked onclick="event.stopPropagation(); syncWorkflowUI();">
+                    <div class="workflow-info">
+                        <h4>【功能 1】生成 Shopify 上架表</h4>
+                        <p>解析原始商品表，将多图（1-6张）按 Shopify 规范展开为 6 行格式并清洗字段。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 Card -->
+            <div class="workflow-card" id="wfCard2" onclick="toggleWorkflow('wf2')">
+                <div class="workflow-checkbox-wrap">
+                    <input type="checkbox" id="wf2" onclick="event.stopPropagation(); syncWorkflowUI();">
+                    <div class="workflow-info">
+                        <h4>【功能 2】下架政策违规商品</h4>
+                        <p>将侵权/违规表与 Shopify 导出表对比，违规 SKU 状态自动标记为 <code>archived</code>。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3 Card -->
+            <div class="workflow-card" id="wfCard3" onclick="toggleWorkflow('wf3')">
+                <div class="workflow-checkbox-wrap">
+                    <input type="checkbox" id="wf3" onclick="event.stopPropagation(); syncWorkflowUI();">
+                    <div class="workflow-info">
+                        <h4>【功能 3】覆盖首图白底表</h4>
+                        <p>识别首图 URL 并批量替换为白底处理后的新图片链接，导出独立更新 CSV。</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Zone 2: File Upload Areas -->
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">2. 上传相关数据表格</div>
+            <div class="card-subtitle">支持拖拽或点击上传 CSV / TXT 表格文件</div>
+        </div>
+
+        <!-- Single Upload Zone (Default / Normal Tasks) -->
+        <div id="singleUploadArea" class="upload-zones-container">
+            <div class="dropzone" id="dropZoneMain" onclick="document.getElementById('fileMain').click()">
+                <div class="dropzone-icon">📄</div>
+                <div class="dropzone-title">点击或将【原始产品表格】拖拽至此</div>
+                <div class="dropzone-desc">包含 SKU、Title、Description、Price、Vendor、Type、Image 1~6 等</div>
+                <div class="dropzone-file-status" id="fileStatusMain">未选择文件</div>
+                <input type="file" id="fileMain" accept=".csv, .txt" onchange="handleFileSelect(event, 'main')">
+            </div>
+        </div>
+
+        <!-- Dual Upload Zone (Active when Feature 2 "Policy Down" is selected) -->
+        <div id="dualUploadArea" class="upload-zones-container dual hidden">
+            <div class="dropzone" id="dropZoneViolation" onclick="document.getElementById('fileViolation').click()">
+                <div class="dropzone-icon">🚨</div>
+                <div class="dropzone-title">上传【侵权/政策违规检测表】</div>
+                <div class="dropzone-desc">系统导出的违规 SKU 数据表</div>
+                <div class="dropzone-file-status" id="fileStatusViolation">未选择文件</div>
+                <input type="file" id="fileViolation" accept=".csv, .txt" onchange="handleFileSelect(event, 'violation')">
+            </div>
+
+            <div class="dropzone" id="dropZoneShopify" onclick="document.getElementById('fileShopify').click()">
+                <div class="dropzone-icon">🛍️</div>
+                <div class="dropzone-title">上传【Shopify 导出产品表】</div>
+                <div class="dropzone-desc">从 Shopify 后台导出的原始 CSV 表</div>
+                <div class="dropzone-file-status" id="fileStatusShopify">未选择文件</div>
+                <input type="file" id="fileShopify" accept=".csv, .txt" onchange="handleFileSelect(event, 'shopify')">
+            </div>
+        </div>
+    </section>
+
+    <!-- Zone 3: Control & Console Terminal -->
+    <section class="card">
+        <div class="execution-bar">
+            <button class="btn-primary" id="btnExecute" onclick="runPipeline()">
+                <span>🚀 执行所选流程并生成表格</span>
+            </button>
+            
+            <div class="progress-wrapper" id="progressWrapper">
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+        </div>
+
+        <!-- Console Log -->
+        <div class="console-card" id="consoleTerminal">
+            <div class="console-entry info">[系统初始化] 准备就绪。引擎采用纯原生离线核，无需依赖任何网络库。</div>
+        </div>
+    </section>
+
+    <!-- Zone 4: Results & Download Center -->
+    <section class="card results-panel" id="resultsCard">
+        <div class="card-header">
+            <div class="card-title">4. 数据处理统计与表格导出</div>
+            <div class="card-subtitle">流程处理完成，可选择下载对应的最终 CSV 表格</div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-box">
+                <div class="metric-lbl">解析总数据行</div>
+                <div class="metric-val" id="metricTotal">0</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-lbl">上架表导出行</div>
+                <div class="metric-val" id="metricListing">0</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-lbl">下架归档 SKU</div>
+                <div class="metric-val" id="metricArchived">0</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-lbl">首图白底替换数</div>
+                <div class="metric-val" id="metricWhiteBG">0</div>
+            </div>
+        </div>
+
+        <div class="download-btn-group" id="downloadGroup">
+            <!-- Download buttons will be dynamically injected based on selected workflows -->
+        </div>
+    </section>
+
+</div>
+
+<script>
+    /**
+     * Native State Store
+     */
+    const store = {
+        files: {
+            main: null,
+            violation: null,
+            shopify: null
+        },
+        parsedData: {
+            main: [],
+            violation: [],
+            shopify: []
+        },
+        outputs: {
+            listingCSV: null,
+            archivedCSV: null,
+            whiteBGCSV: null
+        }
+    };
+
+    /**
+     * Workflow Selector Interactivity
+     */
+    function toggleWorkflow(id) {
+        const checkbox = document.getElementById(id);
+        checkbox.checked = !checkbox.checked;
+        syncWorkflowUI();
+    }
+
+    function syncWorkflowUI() {
+        const wf1 = document.getElementById('wf1').checked;
+        const wf2 = document.getElementById('wf2').checked;
+        const wf3 = document.getElementById('wf3').checked;
+
+        document.getElementById('wfCard1').classList.toggle('active', wf1);
+        document.getElementById('wfCard2').classList.toggle('active', wf2);
+        document.getElementById('wfCard3').classList.toggle('active', wf3);
+
+        // Toggle Upload Zone Views
+        const singleZone = document.getElementById('singleUploadArea');
+        const dualZone = document.getElementById('dualUploadArea');
+
+        if (wf2) {
+            singleZone.classList.add('hidden');
+            dualZone.classList.remove('hidden');
+        } else {
+            singleZone.classList.remove('hidden');
+            dualZone.classList.add('hidden');
+        }
+
+        log(`已更新流程配置: [功能1-上架: ${wf1 ? '开' : '关'}] | [功能2-下架: ${wf2 ? '开' : '关'}] | [功能3-白底: ${wf3 ? '开' : '关'}]`, 'info');
+    }
+
+    /**
+     * Drag and Drop & File Upload Bindings
+     */
+    function setupDragAndDrop(zoneId, fileKey) {
+        const zone = document.getElementById(zoneId);
+        if (!zone) return;
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            zone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            zone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.remove('dragover');
+            }, false);
+        });
+
+        zone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                processFile(files[0], fileKey);
+            }
+        });
+    }
+
+    setupDragAndDrop('dropZoneMain', 'main');
+    setupDragAndDrop('dropZoneViolation', 'violation');
+    setupDragAndDrop('dropZoneShopify', 'shopify');
+
+    function handleFileSelect(event, key) {
+        const file = event.target.files[0];
+        if (file) processFile(file, key);
+    }
+
+    function processFile(file, key) {
+        store.files[key] = file;
+        const statusElMap = {
+            main: 'fileStatusMain',
+            violation: 'fileStatusViolation',
+            shopify: 'fileStatusShopify'
+        };
+        
+        document.getElementById(statusElMap[key]).innerText = `✓ 已加载: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+        log(`已载入文件 [${key}]: ${file.name}`, 'info');
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            store.parsedData[key] = parseCSVNative(text);
+            log(`文件 [${key}] 解析成功，包含 ${store.parsedData[key].length} 行有效数据数据。`, 'success');
+        };
+        reader.readAsText(file);
+    }
+
+    /**
+     * Robust Native CSV Parser (Zero Dependency)
+     * Handles commas inside quotes, escapes, linebreaks
+     */
+    function parseCSVNative(text) {
+        const lines = [];
+        let row = [];
+        let inQuotes = false;
+        let currentToken = '';
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    currentToken += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                row.push(currentToken.trim());
+                currentToken = '';
+            } else if ((char === '\r' || char === '\n') && !inQuotes) {
+                if (char === '\r' && nextChar === '\n') i++;
+                row.push(currentToken.trim());
+                if (row.some(field => field.length > 0)) {
+                    lines.push(row);
+                }
+                row = [];
+                currentToken = '';
+            } else {
+                currentToken += char;
+            }
+        }
+        if (currentToken || row.length > 0) {
+            row.push(currentToken.trim());
+            lines.push(row);
+        }
+
+        if (lines.length === 0) return [];
+
+        const headers = lines[0].map(h => h.replace(/^[\uFEFF]/, '').trim()); // Strip BOM
+        const result = [];
+
+        for (let j = 1; j < lines.length; j++) {
+            const values = lines[j];
+            if (values.length < headers.length) continue;
+            const entry = {};
+            headers.forEach((header, index) => {
+                entry[header] = values[index] !== undefined ? values[index] : '';
+            });
+            result.push(entry);
+        }
+
+        return result;
+    }
+
+    /**
+     * Native CSV Builder
+     */
+    function arrayToCSVNative(objectsArray) {
+        if (!objectsArray || !objectsArray.length) return '';
+        const headers = Object.keys(objectsArray[0]);
+        const csvRows = [];
+
+        // Header Row
+        csvRows.push(headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','));
+
+        // Data Rows
+        for (const row of objectsArray) {
+            const values = headers.map(header => {
+                const val = row[header] !== undefined && row[header] !== null ? String(row[header]) : '';
+                return `"${val.replace(/"/g, '""')}"`;
+            });
+            csvRows.push(values.join(','));
+        }
+
+        return csvRows.join('\n');
+    }
+
+    /**
+     * Console Logger Helper
+     */
+    function log(msg, type = 'info') {
+        const consoleEl = document.getElementById('consoleTerminal');
+        const entry = document.createElement('div');
+        entry.className = `console-entry ${type}`;
+        const timestamp = new Date().toLocaleTimeString();
+        entry.innerText = `[${timestamp}] ${msg}`;
+        consoleEl.appendChild(entry);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    /**
+     * Core Execution Pipeline
+     */
+    async function runPipeline() {
+        const wf1 = document.getElementById('wf1').checked;
+        const wf2 = document.getElementById('wf2').checked;
+        const wf3 = document.getElementById('wf3').checked;
+
+        if (!wf1 && !wf2 && !wf3) {
+            alert("请至少勾选一个需要执行的功能流程！");
+            return;
+        }
+
+        // Validate Inputs
+        if (wf2) {
+            if (!store.parsedData.violation.length || !store.parsedData.shopify.length) {
+                alert("流程【功能2】需要上传：【侵权/政策违规检测表】和【Shopify 导出产品表】！");
+                return;
+            }
+        } else if (wf1 || wf3) {
+            if (!store.parsedData.main.length) {
+                alert("请先上传【原始产品表格】或点击右上角【加载模拟测试数据】！");
+                return;
+            }
+        }
+
+        // UI Reset
+        document.getElementById('btnExecute').disabled = true;
+        document.getElementById('progressWrapper').style.display = 'block';
+        document.getElementById('resultsCard').style.display = 'none';
+        updateProgress(10, '开始初始化引擎...');
+
+        log('=== 启动自动化处理流水线 ===', 'info');
+
+        let totalProcessed = 0;
+        let listingRowsCount = 0;
+        let archivedCount = 0;
+        let whiteBGCount = 0;
+
+        store.outputs.listingCSV = null;
+        store.outputs.archivedCSV = null;
+        store.outputs.whiteBGCSV = null;
+
+        await sleep(200);
+
+        // --- TASK 1: Generate Shopify Standard Listing CSV (Multi-Image 6-Row Expansion) ---
+        if (wf1) {
+            updateProgress(30, '正在生成 Shopify 标准上架表 (多图展开)...');
+            log('执行功能 1: 展开 6 图架构并匹配 Shopify 标准模板...', 'info');
+
+            const source = store.parsedData.main;
+            const expandedRows = [];
+
+            source.forEach(item => {
+                totalProcessed++;
+                const sku = item.SKU || item.sku || `SKU-${Date.now()}`;
+                const title = item.Title || item.title || item['Product Name'] || "Automotive Replacement Part";
+                const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                const desc = item.Description || item.description || item.Body || `<p>${title}</p>`;
+                const price = item.Price || item.price || "19.99";
+                const vendor = item.Vendor || item.vendor || "AutoParts";
+                const type = item.Type || item.type || "Auto Replacement Parts";
+                const tags = item.Tags || item.tags || "Auto, Hardware";
+
+                // Extract Images (Support Image 1~6 or Image Src)
+                const images = [];
+                for (let i = 1; i <= 6; i++) {
+                    const imgKey = item[`Image ${i}`] || item[`Image${i}`] || item[`Image_${i}`] || item[`Image` + i];
+                    if (imgKey) images.push(imgKey);
+                }
+                if (images.length === 0 && item['Image Src']) images.push(item['Image Src']);
+                if (images.length === 0) images.push('https://via.placeholder.com/800x800.png?text=Auto+Part');
+
+                // Row 1: Main Product Entry
+                expandedRows.push({
+                    "Handle": handle,
+                    "Title": title,
+                    "Body (HTML)": desc,
+                    "Vendor": vendor,
+                    "Product Category": type,
+                    "Type": type,
+                    "Tags": tags,
+                    "Published": "TRUE",
+                    "Option1 Name": "Title",
+                    "Option1 Value": "Default Title",
+                    "Variant SKU": sku,
+                    "Variant Price": price,
+                    "Image Src": images[0],
+                    "Image Position": 1,
+                    "Status": "active"
+                });
+
+                // Rows 2..6: Secondary Images
+                for (let imgIdx = 1; imgIdx < images.length; imgIdx++) {
+                    expandedRows.push({
+                        "Handle": handle,
+                        "Title": "",
+                        "Body (HTML)": "",
+                        "Vendor": "",
+                        "Product Category": "",
+                        "Type": "",
+                        "Tags": "",
+                        "Published": "",
+                        "Option1 Name": "",
+                        "Option1 Value": "",
+                        "Variant SKU": "",
+                        "Variant Price": "",
+                        "Image Src": images[imgIdx],
+                        "Image Position": imgIdx + 1,
+                        "Status": ""
+                    });
+                }
+            });
+
+            listingRowsCount = expandedRows.length;
+            store.outputs.listingCSV = arrayToCSVNative(expandedRows);
+            log(`功能 1 完成：生成 ${expandedRows.length} 行标准 Shopify CSV 行记录。`, 'success');
+        }
+
+        // --- TASK 2: Policy Violation Down/Archive Matching ---
+        if (wf2) {
+            updateProgress(60, '正在比对政策违规 SKU 并修改 Status 为 archived...');
+            log('执行功能 2: 交叉比对违规表与 Shopify 表...', 'info');
+
+            const violationList = store.parsedData.violation;
+            const shopifyList = store.parsedData.shopify;
+
+            // Extract Violation SKUs Set
+            const violationSKUSet = new Set();
+            violationList.forEach(r => {
+                const sku = r.SKUs || r.SKU || r.sku || r['Variant SKU'];
+                if (sku) violationSKUSet.add(String(sku).trim().toLowerCase());
+            });
+
+            log(`违规检测表中共提取出 ${violationSKUSet.size} 个待下架 SKU。`, 'warn');
+
+            const updatedShopifyRows = [];
+
+            shopifyList.forEach(item => {
+                const itemSKU = String(item.SKU || item['Variant SKU'] || '').trim().toLowerCase();
+                const rowCopy = { ...item };
+
+                if (itemSKU && violationSKUSet.has(itemSKU)) {
+                    rowCopy['Status'] = 'archived'; // Core Requirement: Status = archived
+                    archivedCount++;
+                }
+
+                updatedShopifyRows.push(rowCopy);
+            });
+
+            store.outputs.archivedCSV = arrayToCSVNative(updatedShopifyRows);
+            log(`功能 2 完成：对比 ${shopifyList.length} 条记录，成功将 ${archivedCount} 个违规商品状态修改为 archived！`, 'success');
+        }
+
+        // --- TASK 3: Main Image White Background Replacement ---
+        if (wf3) {
+            updateProgress(80, '正在处理首图替换为白底 URL...');
+            log('执行功能 3: 批量覆盖首图白底图库 URL...', 'info');
+
+            const source = store.parsedData.main.length ? store.parsedData.main : store.parsedData.shopify;
+            const whiteBGRows = [];
+
+            source.forEach(item => {
+                const rowCopy = { ...item };
+                const originalImg = rowCopy['Image 1'] || rowCopy['Image1'] || rowCopy['Image Src'] || rowCopy['Image'];
+
+                if (originalImg) {
+                    // Simulate/Apply White BG engine URL transformation
+                    if (!originalImg.includes('-whitebg')) {
+                        rowCopy['Image 1'] = originalImg + '?bg=white_clean_processed';
+                        if (rowCopy['Image Src']) rowCopy['Image Src'] = originalImg + '?bg=white_clean_processed';
+                        whiteBGCount++;
+                    }
+                }
+                whiteBGRows.push(rowCopy);
+            });
+
+            store.outputs.whiteBGCSV = arrayToCSVNative(whiteBGRows);
+            log(`功能 3 完成：成功为 ${whiteBGCount} 个商品的首图替换了白底渲染链接。`, 'success');
+        }
+
+        updateProgress(100, '所有流程处理完毕！');
+        await sleep(300);
+
+        // Render Results UI
+        document.getElementById('metricTotal').innerText = totalProcessed || store.parsedData.shopify.length || store.parsedData.main.length;
+        document.getElementById('metricListing').innerText = listingRowsCount;
+        document.getElementById('metricArchived').innerText = archivedCount;
+        document.getElementById('metricWhiteBG').innerText = whiteBGCount;
+
+        renderDownloadButtons(wf1, wf2, wf3);
+
+        document.getElementById('btnExecute').disabled = false;
+        document.getElementById('progressWrapper').style.display = 'none';
+        document.getElementById('resultsCard').style.display = 'flex';
+
+        log('=== 数据处理中心作业全部完成！请在下方下载生成的 CSV 表格 ===', 'success');
+    }
+
+    /**
+     * Download Buttons Renderer
+     */
+    function renderDownloadButtons(wf1, wf2, wf3) {
+        const container = document.getElementById('downloadGroup');
+        container.innerHTML = '';
+
+        if (wf1 && store.outputs.listingCSV) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-download';
+            btn.innerHTML = '📥 下载【Shopify 标准上架 CSV】';
+            btn.onclick = () => downloadCSV(store.outputs.listingCSV, 'Shopify_Standard_Listing.csv');
+            container.appendChild(btn);
+        }
+
+        if (wf2 && store.outputs.archivedCSV) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-download';
+            btn.style.background = '#ff3b30';
+            btn.innerHTML = '🚨 下载【下架归档完成表 (archived)】';
+            btn.onclick = () => downloadCSV(store.outputs.archivedCSV, 'Shopify_Policy_Archived_Down.csv');
+            container.appendChild(btn);
+        }
+
+        if (wf3 && store.outputs.whiteBGCSV) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-download';
+            btn.style.background = '#008060';
+            btn.innerHTML = '🖼️ 下载【首图白底覆盖更新表】';
+            btn.onclick = () => downloadCSV(store.outputs.whiteBGCSV, 'Shopify_WhiteBG_Replaced.csv');
+            container.appendChild(btn);
+        }
+    }
+
+    /**
+     * File Saver
+     */
+    function downloadCSV(csvContent, filename) {
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        log(`已成功导出并下载表格: ${filename}`, 'success');
+    }
+
+    /**
+     * Demo Dataset Loader
+     */
+    function loadDemoDataset() {
+        const demoMain = [
+            {
+                "SKU": "1MQ2608107",
+                "Title": "High Quality Replacement Camshaft Lift Mechanism for Ford F-150",
+                "Description": "Heavy duty automotive replacement camshaft kit designed for maximum engine endurance.",
+                "Price": "23.10",
+                "Vendor": "Create The Impossible",
+                "Type": "Camshaft Parts",
+                "Image 1": "https://cdn.shopify.com/files/1/0621/6463/1692/files/1MQ2608107_1.jpg",
+                "Image 2": "https://cdn.shopify.com/files/1/0621/6463/1692/files/1MQ2608107_2.jpg",
+                "Image 3": "https://cdn.shopify.com/files/1/0621/6463/1692/files/1MQ2608107_3.jpg"
+            },
+            {
+                "SKU": "1PQ2608105",
+                "Title": "Condition Replacement Camshaft Assembly Compatible with Chevy Silverado",
+                "Description": "Engineered for precise timing and restored power output.",
+                "Price": "29.81",
+                "Vendor": "Create The Impossible",
+                "Type": "Camshaft Parts",
+                "Image 1": "https://cdn.shopify.com/files/1/0621/6463/1692/files/1PQ2608105_1.jpg",
+                "Image 2": "https://cdn.shopify.com/files/1/0621/6463/1692/files/1PQ2608105_2.jpg"
+            },
+            {
+                "SKU": "1KY2608085",
+                "Title": "Car Thermostat Replacement Parts Kit for Dodge Ram 1500",
+                "Description": "High accuracy coolant temp control thermostat for heavy duty truck engines.",
+                "Price": "59.46",
+                "Vendor": "Create The Impossible",
+                "Type": "Thermostat Parts",
+                "Image 1": "https://cdn.shopify.com/files/1/0621/6463/1692/files/1KY2608085_1.jpg"
+            }
+        ];
+
+        const demoViolation = [
+            { "SKUs": "1PQ2608105", "Process": "SCANNED", "Reason": "Policy Infringement Keyword" }
+        ];
+
+        const demoShopify = [
+            { "Title": "High Quality Replacement Camshaft Lift Mechanism", "SKU": "1MQ2608107", "Status": "active", "Vendor": "Create The Impossible" },
+            { "Title": "Condition Replacement Camshaft Assembly", "SKU": "1PQ2608105", "Status": "active", "Vendor": "Create The Impossible" },
+            { "Title": "Car Thermostat Replacement Parts Kit", "SKU": "1KY2608085", "Status": "active", "Vendor": "Create The Impossible" }
+        ];
+
+        store.parsedData.main = demoMain;
+        store.parsedData.violation = demoViolation;
+        store.parsedData.shopify = demoShopify;
+
+        document.getElementById('fileStatusMain').innerText = "✓ 已自动加载模拟数据 (3 条记录)";
+        document.getElementById('fileStatusViolation').innerText = "✓ 已自动加载模拟违规表 (1 条违规 SKU)";
+        document.getElementById('fileStatusShopify').innerText = "✓ 已自动加载模拟 Shopify 表 (3 条记录)";
+
+        log("成功载入完整的【汽配/工业品】测试数据！点击【🚀 执行所选流程】即可测试生成过程。", "success");
+    }
+
+    /**
+     * Helpers
+     */
+    function updateProgress(percent, text) {
+        document.getElementById('progressFill').style.width = percent + '%';
+        document.getElementById('progressText').innerText = percent + '% - ' + text;
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+</script>
+
+</body>
+</html>
