@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 汽配/工业品数据处理中心 (双表学习与多店铺版)</title>
+    <title>Shopify 汽配/工业品数据处理中心 (模板底本与自定义列版)</title>
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 引入 SheetJS 支持读取 Excel (.xlsx/.xls) 文件 -->
@@ -68,7 +68,6 @@
         .stat-num { font-size: 22px; font-weight: 700; color: var(--primary); }
 
         .tag-info { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
-        .tag-success { background: #e4f5ed; color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -88,7 +87,7 @@
 
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">☁️ 多店铺双表学习版</span></h1>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">☁️ 原生底本格式化版</span></h1>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span id="userStatus" style="font-size: 13px; color: var(--subtext);">未登录</span>
                 <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
@@ -117,10 +116,9 @@
                             <span>🛍️ 店铺与模式配置 (产品上架专用)</span>
                         </div>
 
-                        <!-- 店铺选择选项 -->
                         <div class="setting-row">
                             <label>🏪 目标 Shopify 店铺：</label>
-                            <select id="shopSelect" onchange="handleShopChange()">
+                            <select id="shopSelect">
                                 <option value="partsphoenix">partsphoenix</option>
                                 <option value="Create the impossible">Create the impossible</option>
                             </select>
@@ -140,40 +138,44 @@
                         </div>
 
                         <div class="card-title" style="margin-top: 20px;">
-                            <span>📁 上架双表导入 (源表 + Shopify 官方模板表)</span>
+                            <span>📁 上架双表导入 (源表 + 学习的 Shopify 产品模板表)</span>
                         </div>
                         <div class="upload-grid">
-                            <!-- 导入数据源表 -->
+                            <!-- 1. 导入数据源表 -->
                             <div class="upload-area" onclick="document.getElementById('sourceExcelInput').click()">
                                 <p style="font-size: 28px; margin-bottom: 4px;">📊</p>
                                 <p style="font-weight: 600;">1. 上传原始数据源表</p>
                                 <p style="font-size: 12px; color: var(--subtext);" id="sourceStatusText">包含标题、型号、价格、多图</p>
                                 <input type="file" id="sourceExcelInput" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                             </div>
-                            <!-- 导入 Shopify 产品模板表学习 -->
+                            <!-- 2. 导入 Shopify 产品模板表 (作为绝对底本) -->
                             <div class="upload-area" onclick="document.getElementById('templateExcelInput').click()">
                                 <p style="font-size: 28px; margin-bottom: 4px;">🧠</p>
-                                <p style="font-weight: 600;">2. 上传 Shopify 模板样例表</p>
-                                <p style="font-size: 12px; color: var(--subtext);" id="templateStatusText">用于学习全表固定值与必填列</p>
+                                <p style="font-weight: 600;">2. 上传 Shopify 模板表 (做底层基准)</p>
+                                <p style="font-size: 12px; color: var(--subtext);" id="templateStatusText">严格保留此表的原始列头与未填充空白格式</p>
                                 <input type="file" id="templateExcelInput" accept=".xlsx, .xls, .csv" onchange="handleTemplateLearning(event)">
                             </div>
                         </div>
                     </div>
 
-                    <!-- 手写/手动配置对应字段面板 -->
+                    <!-- 动态添加与云端保存映射配置面板 -->
                     <div class="card">
                         <div class="card-title">
-                            <span>✍️ 字段映射配置 (支持自由手写准确列名)</span>
-                            <span class="tag-info" id="mappingTipTag">已载入常用预设</span>
+                            <span>✍️ 字段对应绑定 (支持动态添加与云端实时保存)</span>
+                            <div>
+                                <button class="btn btn-outline btn-sm" onclick="addNewMappingRow()">➕ 添加新映射列</button>
+                                <button class="btn btn-sm" onclick="saveMappingToCloud()">💾 保存当前映射规则</button>
+                            </div>
                         </div>
                         <p style="font-size: 13px; color: var(--subtext); margin-bottom: 12px;">
-                            在右侧文本框中**直接输入/手写**你的源数据表对应的列名（不准确时随时修改）：
+                            可以在下方自由编辑列名。若有其他必填列，点击上方【➕ 添加新映射列】自由添加：
                         </p>
                         <table class="mapping-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 35%;">Shopify 标准字段</th>
-                                    <th style="width: 65%;">数据源表格对应列名 (支持手写)</th>
+                                    <th style="width: 45%;">Shopify 模板目标列头</th>
+                                    <th style="width: 45%;">数据源表格对应列名 (支持手写)</th>
+                                    <th style="width: 10%;">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="manualMappingBody"></tbody>
@@ -188,7 +190,7 @@
                         <div class="upload-area" onclick="document.getElementById('archiveInput').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">🚫</p>
                             <p style="font-weight: 600;">拖拽上传违规 SKU 列表文件 (.csv, .xlsx)</p>
-                            <input type="file" id="archiveInput" accept=".xlsx, .xls, .csv" onchange="handleOtherModuleUpload(event)">
+                            <input type="file" id="archiveInput" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                         </div>
                     </div>
                 </div>
@@ -200,7 +202,7 @@
                         <div class="upload-area" onclick="document.getElementById('whiteInput').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">🖼️</p>
                             <p style="font-weight: 600;">拖拽上传包含首图链接的表格 (.xlsx, .csv)</p>
-                            <input type="file" id="whiteInput" accept=".xlsx, .xls, .csv" onchange="handleOtherModuleUpload(event)">
+                            <input type="file" id="whiteInput" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                         </div>
                     </div>
                 </div>
@@ -227,7 +229,7 @@
             <aside>
                 <div class="card">
                     <div class="card-title">操作控制台</div>
-                    <button class="btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="runProcess()">🚀 开始生成 Shopify 结果表</button>
+                    <button class="btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="runProcess()">🚀 开始生成符合 Shopify 原表规范的文件</button>
                     <button class="btn btn-outline" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="downloadCSV()">📥 导出处理完成 CSV 表格</button>
                 </div>
 
@@ -261,34 +263,28 @@
         let currentModule = 'module1';
         
         let rawSourceData = [], rawSourceHeaders = [];
+        let templateHeaders = []; // 原封不动保留的学习模板所有表列头
+        let templateRowSample = {}; // 模版表学习到的固定值行样本
         let mappedResultData = [];
 
-        // 学习到的 Shopify 模板全表固定默认列与固定值
-        let learnedFixedColumns = {};
-
-        // 手写配置项的预填默认列名字典（支持自由修改手写）
-        let manualFieldMap = {
-            'Handle': '父Sku编码',
-            'Title': '标题',
-            'SKU': '父Sku编码',
-            'Price': '运费调整后最终价格',
-            'Image 1': '描述图片19',
-            'Image 2': '描述图片29',
-            'Image 3': '描述图片32',
-            'Image 4': '描述图片4',
-            'Image 5': '描述图片5',
-            'Image 6': '描述图片6'
-        };
+        // 可自定义的列表映射（默认规则）
+        let dynamicMappingList = [
+            { shopifyCol: 'Handle', sourceCol: '父Sku编码' },
+            { shopifyCol: 'Title', sourceCol: '标题' },
+            { shopifyCol: 'SKU', sourceCol: '父Sku编码' },
+            { shopifyCol: 'Price', sourceCol: '运费调整后最终价格' },
+            { shopifyCol: 'Image Src', sourceCol: '描述图片19' },
+            { shopifyCol: 'Image 2', sourceCol: '描述图片29' },
+            { shopifyCol: 'Image 3', sourceCol: '描述图片32' },
+            { shopifyCol: 'Image 4', sourceCol: '描述图片4' },
+            { shopifyCol: 'Image 5', sourceCol: '描述图片5' },
+            { shopifyCol: 'Image 6', sourceCol: '描述图片6' }
+        ];
 
         function log(msg) {
             const box = document.getElementById('logBox');
             box.innerText += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
             box.scrollTop = box.scrollHeight;
-        }
-
-        function handleShopChange() {
-            let shop = document.getElementById('shopSelect').value;
-            log(`🏪 当前选择目标店铺: ${shop}`);
         }
 
         function switchModule(modId) {
@@ -317,7 +313,7 @@
                 document.getElementById('userStatus').innerText = `👤 登录账号: ${currentUser.email}`;
                 document.getElementById('logoutBtn').style.display = 'inline-block';
                 
-                renderManualMappingUI(); // 渲染可手写输入的配置表
+                loadSavedMappingFromCloud(); // 从云端获取已保存的个性化映射规则
                 fetchModuleHistory();
             } else {
                 document.getElementById('authModal').style.display = 'flex';
@@ -343,31 +339,66 @@
             location.reload();
         }
 
-        // 渲染【可手写输入】映射界面
-        function renderManualMappingUI() {
+        // 渲染映射表单
+        function renderMappingTable() {
             const tbody = document.getElementById('manualMappingBody');
             tbody.innerHTML = '';
 
-            Object.keys(manualFieldMap).forEach(targetField => {
+            dynamicMappingList.forEach((item, index) => {
                 let tr = document.createElement('tr');
-                let td1 = document.createElement('td');
-                td1.innerHTML = `<b>${targetField}</b>`;
-
-                let td2 = document.createElement('td');
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.value = manualFieldMap[targetField];
-                input.dataset.target = targetField;
-                input.placeholder = `手写输入源表中对应的列名，例如: ${manualFieldMap[targetField]}`;
-                
-                td2.appendChild(input);
-                tr.appendChild(td1);
-                tr.appendChild(td2);
+                tr.innerHTML = `
+                    <td><input type="text" value="${item.shopifyCol}" onchange="updateMappingItem(${index}, 'shopifyCol', this.value)" placeholder="Shopify 目标列头"></td>
+                    <td><input type="text" value="${item.sourceCol}" onchange="updateMappingItem(${index}, 'sourceCol', this.value)" placeholder="源表格对应列名"></td>
+                    <td><button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="deleteMappingRow(${index})">删除</button></td>
+                `;
                 tbody.appendChild(tr);
             });
         }
 
-        // 1. 上传源数据表
+        function updateMappingItem(index, key, value) {
+            dynamicMappingList[index][key] = value.trim();
+        }
+
+        function addNewMappingRow() {
+            dynamicMappingList.push({ shopifyCol: '', sourceCol: '' });
+            renderMappingTable();
+        }
+
+        function deleteMappingRow(index) {
+            dynamicMappingList.splice(index, 1);
+            renderMappingTable();
+        }
+
+        // 💾 保存当前映射到云端 Supabase
+        async function saveMappingToCloud() {
+            if(!supabaseClient || !currentUser) return;
+            const { error } = await supabaseClient.from('learning_templates').upsert([{
+                user_id: currentUser.id,
+                feature_type: currentModule,
+                mapping_rules: dynamicMappingList,
+                updated_at: new Date()
+            }]);
+
+            if(!error) alert("🎉 你的字段映射规则已永久保存至云端！下次打开自动加载！");
+            else alert("保存失败：" + error.message);
+        }
+
+        async function loadSavedMappingFromCloud() {
+            if(!supabaseClient || !currentUser) return;
+            const { data } = await supabaseClient
+                .from('learning_templates')
+                .select('*')
+                .eq('feature_type', currentModule)
+                .single();
+
+            if(data && data.mapping_rules) {
+                dynamicMappingList = data.mapping_rules;
+                log("☁️ 已成功自动载入云端记忆的字段映射规则");
+            }
+            renderMappingTable();
+        }
+
+        // 1. 上传数据源表
         function handleSourceUpload(e) {
             const file = e.target.files[0];
             if(!file) return;
@@ -383,14 +414,14 @@
                 rawSourceHeaders = jsonRows[0].map(h => (h||'').toString().trim());
                 rawSourceData = jsonRows.slice(1).filter(r => r.length > 0);
 
-                log(`✅ 成功导入数据源表: ${file.name} (包含 ${rawSourceData.length} 条产品)`);
+                log(`✅ 成功导入源数据表: ${file.name} (${rawSourceData.length} 件产品)`);
                 document.getElementById('totalCount').innerText = rawSourceData.length;
-                document.getElementById('sourceStatusText').innerText = `已成功载入: ${file.name}`;
+                document.getElementById('sourceStatusText').innerText = `已载入源表: ${file.name}`;
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // 2. 🧠 上传 Shopify 官方产品模板表进行固定列值记忆学习
+        // 2. 🧠 上传 Shopify 官方产品模板表（学习结构 + 提取固定值，严禁修改原列头结构）
         function handleTemplateLearning(e) {
             const file = e.target.files[0];
             if(!file) return;
@@ -399,45 +430,31 @@
             reader.onload = function(evt) {
                 let data = new Uint8Array(evt.target.result);
                 let workbook = XLSX.read(data, { type: 'array' });
-                let sheet = workbook.Sheets[workbook.SheetNames[0]];
-                let jsonRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-                if(jsonRows.length < 2) { log("❌ 模板表行数不足，无法学习全表固定值"); return; }
+                if(jsonRows.length < 1) { log("❌ 模板表结构为空"); return; }
 
-                let tHeaders = jsonRows[0].map(h => (h||'').toString().trim());
-                learnedFixedColumns = {};
+                // 完整锁定学习该模板表所有的列名顺序
+                templateHeaders = jsonRows[0].map(h => (h||'').toString().trim());
+                templateRowSample = {};
 
-                // 算法遍历：识别哪些列包含全表统一的固定填充值（如 Published = TRUE，Vendor 等）
-                for(let colIdx = 0; colIdx < tHeaders.length; colIdx++) {
-                    let colName = tHeaders[colIdx];
-                    let firstVal = jsonRows[1][colIdx];
-
-                    if(firstVal !== undefined && firstVal !== '') {
-                        let isConstant = true;
-                        for(let rowIdx = 2; rowIdx < jsonRows.length; rowIdx++) {
-                            if(jsonRows[rowIdx][colIdx] !== firstVal) {
-                                isConstant = false;
-                                break;
-                            }
-                        }
-                        // 如果整列数值一致，判定为必填固定值列并记忆
-                        if(isConstant) {
-                            learnedFixedColumns[colName] = firstVal;
+                // 如果模板里有填充数据，提炼固定填充列
+                if(jsonRows.length > 1) {
+                    for(let c = 0; c < templateHeaders.length; c++) {
+                        let colName = templateHeaders[c];
+                        let val = jsonRows[1][c];
+                        if(val !== undefined && val !== '') {
+                            templateRowSample[colName] = val;
                         }
                     }
                 }
 
-                log(`🧠 成功学习 Shopify 模板表！共提炼出 ${Object.keys(learnedFixedColumns).length} 个全表固定填充字段规则`);
-                document.getElementById('templateStatusText').innerText = `已激活模板规则: ${file.name}`;
+                log(`🧠 成功加载并锁定 Shopify 官方模板表 (${templateHeaders.length} 列)！严格保持其原始结构未做更改`);
+                document.getElementById('templateStatusText').innerText = `已锁定官方原表基准: ${file.name}`;
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function handleOtherModuleUpload(e) {
-            handleSourceUpload(e);
-        }
-
-        // 智能小写横杠 Handle 计算公式
         function generateSmartHandle(rawStr) {
             if(!rawStr) return 'product-item';
             return rawStr.toString()
@@ -447,84 +464,97 @@
                 .replace(/(^-|-$)/g, '');
         }
 
-        // 🚀 核心：执行生成
+        // 🚀 核心：原封不动替换生成 Shopify 标准表
         async function runProcess() {
             if(rawSourceData.length === 0) { alert("请先上传原始数据源表！"); return; }
 
+            // 若用户未专门上传模板表，提供默认标准列结构
+            let finalHeaders = templateHeaders.length > 0 ? templateHeaders : [
+                'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Product Category', 'Type', 'Tags', 'Published',
+                'Option1 Name', 'Option1 Value', 'Option2 Name', 'Option2 Value', 'Option3 Name', 'Option3 Value',
+                'Variant SKU', 'Variant Grams', 'Variant Inventory Tracker', 'Variant Inventory Qty',
+                'Variant Inventory Policy', 'Variant Fulfillment Service', 'Variant Price', 'Variant Compare At Price',
+                'Variant Requires Shipping', 'Variant Taxable', 'Variant Barcode', 'Image Src', 'Image Position',
+                'Image Alt Text', 'Gift Card', 'SEO Title', 'SEO Description', 'Google Shopping / Google Product Category',
+                'Variant Image', 'Variant Weight Unit', 'Variant Tax Code', 'Cost per item', 'Price / International',
+                'Compare At Price / International', 'Status'
+            ];
+
             let selectedShop = document.getElementById('shopSelect').value;
-            log(`⏳ 开始生成应用于【${selectedShop}】店铺的 Shopify 标准表格...`);
-
-            // 获取手写填入的列名
-            let getHandwrittenCol = (target) => {
-                let el = document.querySelector(`input[data-target="${target}"]`);
-                return el ? el.value.trim() : '';
-            };
-
-            let handleCol = getHandwrittenCol('Handle');
-            let titleCol = getHandwrittenCol('Title');
-            let skuCol = getHandwrittenCol('SKU');
-            let priceCol = getHandwrittenCol('Price');
-
-            let handleIdx = rawSourceHeaders.indexOf(handleCol);
-            let titleIdx = rawSourceHeaders.indexOf(titleCol);
-            let skuIdx = rawSourceHeaders.indexOf(skuCol);
-            let priceIdx = rawSourceHeaders.indexOf(priceCol);
+            log(`⏳ 开始以官方模板列名结构 (${finalHeaders.length} 列) 填充匹配数据...`);
 
             let imgMode = document.getElementById('imageModeSelect').value;
             mappedResultData = [];
             let totalExportRows = 0;
 
             rawSourceData.forEach(row => {
-                let title = row[titleIdx] || '';
-                let rawHandleSource = (handleIdx !== -1 && row[handleIdx]) ? row[handleIdx] : title;
-                let handle = generateSmartHandle(rawHandleSource);
-                let sku = row[skuIdx] || '';
-                let price = row[priceIdx] || '';
+                // 找到映射中绑定的源表字段值
+                let getSourceValByShopifyCol = (sColName) => {
+                    let mapItem = dynamicMappingList.find(m => m.shopifyCol.toLowerCase() === sColName.toLowerCase());
+                    if(!mapItem || !mapItem.sourceCol) return '';
+                    let idx = rawSourceHeaders.indexOf(mapItem.sourceCol);
+                    return idx !== -1 ? row[idx] : '';
+                };
 
-                // 读取 1-6 手写字段对应的图片
+                let rawTitle = getSourceValByShopifyCol('Title');
+                let rawHandleVal = getSourceValByShopifyCol('Handle') || rawTitle;
+                let handle = generateSmartHandle(rawHandleVal);
+                let sku = getSourceValByShopifyCol('SKU');
+                let price = getSourceValByShopifyCol('Price');
+
+                // 提取多图
                 let images = [];
-                for(let i = 1; i <= 6; i++) {
-                    let imgColName = getHandwrittenCol(`Image ${i}`);
-                    let idx = rawSourceHeaders.indexOf(imgColName);
-                    if(idx !== -1 && row[idx]) images.push(row[idx]);
-                }
+                ['Image Src', 'Image 1', 'Image 2', 'Image 3', 'Image 4', 'Image 5', 'Image 6'].forEach(imgKey => {
+                    let url = getSourceValByShopifyCol(imgKey);
+                    if(url) images.push(url);
+                });
 
                 let exportImgCount = (imgMode === 'auto') ? (images.length > 0 ? images.length : 1) : parseInt(imgMode);
 
                 for(let pos = 1; pos <= exportImgCount; pos++) {
                     let currentImg = images[pos - 1] || '';
+                    let rowObj = {};
 
-                    // 构建主数据行结构
-                    let itemRow = {
-                        'Handle': handle,
-                        'Title': pos === 1 ? title : '',
-                        'Vendor': selectedShop, // 自动填入当前选择的店铺名！
-                        'SKU': pos === 1 ? sku : '',
-                        'Price': pos === 1 ? price : '',
-                        'Image Src': currentImg,
-                        'Image Position': pos,
-                        'Status': 'active'
-                    };
-
-                    // 将模板学习到的全表固定值（如 Vendor/Published）注入表格
-                    Object.keys(learnedFixedColumns).forEach(fixedKey => {
-                        if(fixedKey !== 'Vendor') { // Vendor 优先使用选项框里的店铺名
-                            itemRow[fixedKey] = learnedFixedColumns[fixedKey];
-                        }
+                    // 100% 严格按照模板表的原始列头填充
+                    finalHeaders.forEach(colName => {
+                        rowObj[colName] = templateRowSample[colName] || ''; // 默认使用模板学习到的固定内容，留空的维持原样留空
                     });
 
-                    mappedResultData.push(itemRow);
+                    // 覆盖动态变量字段
+                    rowObj['Handle'] = handle;
+                    if(rowObj.hasOwnProperty('Vendor')) rowObj['Vendor'] = selectedShop;
+                    if(rowObj.hasOwnProperty('Status')) rowObj['Status'] = 'active';
+
+                    if(pos === 1) {
+                        if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = rawTitle;
+                        if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = sku;
+                        else if(rowObj.hasOwnProperty('SKU')) rowObj['SKU'] = sku;
+
+                        if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = price;
+                        else if(rowObj.hasOwnProperty('Price')) rowObj['Price'] = price;
+                    } else {
+                        // 展开行：清空非图文的主信息
+                        if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = '';
+                        if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = '';
+                        if(rowObj.hasOwnProperty('SKU')) rowObj['SKU'] = '';
+                        if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = '';
+                        if(rowObj.hasOwnProperty('Price')) rowObj['Price'] = '';
+                    }
+
+                    if(rowObj.hasOwnProperty('Image Src')) rowObj['Image Src'] = currentImg;
+                    if(rowObj.hasOwnProperty('Image Position')) rowObj['Image Position'] = pos;
+
+                    mappedResultData.push(rowObj);
                     totalExportRows++;
                 }
             });
 
             document.getElementById('rowCount').innerText = totalExportRows;
-            log(`🎉 处理完成！成功生成关联店铺【${selectedShop}】的 ${totalExportRows} 行数据！`);
+            log(`🎉 成功！已按照标准的 ${finalHeaders.length} 列官方模板结构导出 ${totalExportRows} 行文件！原格式完美保留！`);
 
             // 云端自动写入历史记录
             if(supabaseClient && currentUser) {
-                let headers = Object.keys(mappedResultData[0]);
-                let csvText = headers.join(',') + '\n' + mappedResultData.map(r => headers.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+                let csvText = finalHeaders.join(',') + '\n' + mappedResultData.map(r => finalHeaders.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
 
                 await supabaseClient.from('user_history_records').insert([{
                     user_id: currentUser.id,
@@ -534,7 +564,7 @@
                     csv_content: csvText
                 }]);
 
-                log("☁️ 已成功自动写入云端历史面板");
+                log("☁️ 已成功保存此导出的原格式文件至云端历史记录面板");
                 fetchModuleHistory();
             }
         }
