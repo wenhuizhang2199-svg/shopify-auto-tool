@@ -164,7 +164,7 @@
         // 内置已配置好的 Supabase API 路径与密钥
         const SUPABASE_URL = "https://apuotgbljoepgbvueuwr.supabase.co";
         // 请把你在 Supabase 复制的 Publishable key 粘贴替换下方双引号里的内容
-        const SUPABASE_KEY = "在这里粘贴你的_Publishable_key"; 
+        const SUPABASE_KEY = "sb_publishable_le5RiJtjMsbP7zyhILJy1Q_uwdmshH-"; 
 
         let supabaseClient = null;
         let rawData = [], rawHeaders = [], mappedData = [];
@@ -182,7 +182,7 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        function initSupabase() {
+        function initSupabase(sb_publishable_le5RiJtjMsbP7zyhILJy1Q_uwdmshH-) {
             try {
                 if(SUPABASE_KEY === "在这里粘贴你的_Publishable_key") {
                     log("⚠️ 提示：请在代码第 185 行填入你的 Supabase Publishable Key");
