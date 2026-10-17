@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 数据自动化处理中心 (原表零修改查找更新版)</title>
+    <title>Shopify 数据自动化处理中心</title>
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 引入 SheetJS 支持读取 Excel (.xlsx/.xls) 文件 -->
@@ -58,7 +58,7 @@
         .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
 
         .setting-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; background: #fafbfb; padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
-        .setting-row label { font-size: 14px; font-weight: 600; min-width: 140px; }
+        .setting-row label { font-size: 14px; font-weight: 600; min-width: 160px; }
         .setting-row select, .setting-row input { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; flex: 1; }
 
         .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -96,7 +96,7 @@
 
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">🚫 原表精准检索归档版</span></h1>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">🚫 自定义比对列名版</span></h1>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span id="userStatus" style="font-size: 13px; color: var(--subtext);">未登录</span>
                 <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
@@ -174,23 +174,57 @@
                     </div>
                 </div>
 
-                <!-- 2. 政策违规下架专属面板 (双表双入口，无需配置映射) -->
+                <!-- 2. 政策违规下架专属面板 (包含精准匹配规则卡片) -->
                 <div id="panelModule2" class="module-panel" style="display: none;">
                     <div class="card">
-                        <div class="card-title">🚫 政策下架双表精准比对更新中心</div>
+                        <div class="card-title">⚙️ 比对规则与列名配置 (灵活匹配不同表格列名)</div>
+                        <div class="setting-row">
+                            <label>🎯 比对匹配依据：</label>
+                            <select id="matchStrategySelect">
+                                <option value="sku">🎯 优先使用 SKU 匹配（推荐：精准且速度最快）</option>
+                                <option value="title">📝 优先使用 标题 (Title) 匹配</option>
+                                <option value="both">⚡ 双重智能匹配（SKU 或 标题 只要对上一个就归档）</option>
+                            </select>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div style="background:#fafbfb; padding:12px; border-radius:8px; border:1px solid var(--border);">
+                                <p style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--primary);">侵权系统表对应列名：</p>
+                                <div style="margin-bottom:6px;">
+                                    <span style="font-size:12px; color:var(--subtext);">SKU列名：</span>
+                                    <input type="text" id="srcSkuColName" value="SKUs" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                </div>
+                                <div>
+                                    <span style="font-size:12px; color:var(--subtext);">标题列名：</span>
+                                    <input type="text" id="srcTitleColName" value="Product Title" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                </div>
+                            </div>
+                            <div style="background:#fafbfb; padding:12px; border-radius:8px; border:1px solid var(--border);">
+                                <p style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--primary);">Shopify 导出表对应列名：</p>
+                                <div style="margin-bottom:6px;">
+                                    <span style="font-size:12px; color:var(--subtext);">SKU列名：</span>
+                                    <input type="text" id="shopSkuColName" value="Variant SKU" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                </div>
+                                <div>
+                                    <span style="font-size:12px; color:var(--subtext);">标题列名：</span>
+                                    <input type="text" id="shopTitleColName" value="Title" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">🚫 政策下架双表上传中心</div>
                         <div class="upload-grid">
-                            <!-- 入口 1：侵权数据表 -->
                             <div class="upload-area" id="dropZoneSource2" onclick="document.getElementById('sourceInput2').click()">
                                 <p style="font-size: 28px; margin-bottom: 4px;">🔍</p>
                                 <p style="font-weight: 600;">1. 上传/拖拽 侵权系统数据表</p>
-                                <p style="font-size: 12px; color: var(--subtext);" id="sourceStatusText2">自动匹配 Overall Decision == RED 的违规行标题/SKU</p>
+                                <p style="font-size: 12px; color: var(--subtext);" id="sourceStatusText2">匹配包含 RED 违规标识的源表</p>
                                 <input type="file" id="sourceInput2" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                             </div>
-                            <!-- 入口 2：Shopify 导出表 (保持百分百原格式) -->
                             <div class="upload-area" id="dropZoneTemplate2" onclick="document.getElementById('templateInput2').click()">
                                 <p style="font-size: 28px; margin-bottom: 4px;">🏬</p>
                                 <p style="font-weight: 600;">2. 上传/拖拽 Shopify 后台导出产品表</p>
-                                <p style="font-size: 12px; color: var(--subtext);" id="learnStatusModule2">100%保留原始列格式与变体行，仅把RED商品状态改归档</p>
+                                <p style="font-size: 12px; color: var(--subtext);" id="learnStatusModule2">100%保留原始列格式，仅把违规项状态改为 archived</p>
                                 <input type="file" id="templateInput2" accept=".xlsx, .xls, .csv" onchange="handleModule2ShopifyTable(event)">
                             </div>
                         </div>
@@ -210,7 +244,7 @@
                     </div>
                 </div>
 
-                <!-- 映射配对面板 (下架模块自动隐藏，保持界面极简) -->
+                <!-- 映射配对面板 (下架模块自动隐藏) -->
                 <div class="card" id="mappingCardContainer">
                     <div class="card-title">
                         <span id="mappingPanelTitle">✍️ 字段对应绑定 (当前板块独立配对)</span>
@@ -246,7 +280,7 @@
 
                 <div class="card">
                     <div class="card-title">实时处理日志</div>
-                    <div class="log-box" id="logBox">[系统初始化完成] 准备就绪...\n</div>
+                    <div class="log-box" id="logBox">[系统初始化完成] 自定义匹配列名控制台已加载完毕...\n</div>
                 </div>
             </main>
 
@@ -287,7 +321,7 @@
         let currentModule = 'module1';
         
         let rawSourceData = [], rawSourceHeaders = [];
-        let shopifyExportData = [], shopifyExportHeaders = []; // 板块 2 专有：完整保存 Shopify 后台导出的原表结构与所有行
+        let shopifyExportData = [], shopifyExportHeaders = [];
         
         let globalTemplateHeaders = [];
         let globalTemplateFixedValues = {};
@@ -301,7 +335,7 @@
 
         const KNOWLEDGE_DESCRIPTIONS = {
             'module1': '📘 <b>产品上架功能：</b> 拖拽导入数据源表后，系统会自动清洗标题尾部的横杠，按多图自动进行纵向扩展，并生成 Image position 顺序索引。',
-            'module2': '📘 <b>零修改下架更新：</b> 自动提取侵权表里 Overall Decision == RED 的违规项标题/SKU，自动在 Shopify 导出表中定位这些商品及其全部变体行，将其 Status 修改为 archived，其余所有格式与列原封不动保留。',
+            'module2': '📘 <b>精准比对下架：</b> 根据您选择的【SKU / 标题列名】在 Shopify 表中进行精准查找匹配，匹配成功的商品全变体行会自动更改 Status 为 archived，保留原始其它所有字段。',
             'module3': '📘 <b>首图白底覆盖功能：</b> 拖拽上传包含白底图片链接的数据表，系统会自动抓取首图进行替换与规范化格式导出。'
         };
 
@@ -337,7 +371,6 @@
 
             document.getElementById('moduleKnowledgeTag').innerHTML = KNOWLEDGE_DESCRIPTIONS[modId];
 
-            // 下架板块隐藏映射面板（无需手动配置映射）
             const mappingBox = document.getElementById('mappingCardContainer');
             if(modId === 'module2') {
                 mappingBox.style.display = 'none';
@@ -523,7 +556,7 @@
 
         function handleSourceUpload(e) { parseSourceFile(e.target.files[0]); }
 
-        // 读取 Shopify 后台导出原表 (文件 2 - 零格式修改)
+        // 读取 Shopify 后台导出原表 (文件 2)
         function parseShopifyTable(file) {
             if(!file) return;
             const reader = new FileReader();
@@ -537,8 +570,8 @@
                 shopifyExportHeaders = jsonRows[0].map(h => (h||'').toString().trim());
                 shopifyExportData = jsonRows.slice(1);
 
-                log(`🏬 成功读取 Shopify 导出原表: ${file.name} (包含 ${shopifyExportHeaders.length} 列, ${shopifyExportData.length} 行完整原格式行)`);
-                document.getElementById('learnStatusModule2').innerText = `已载入底本原表: ${file.name} (${shopifyExportHeaders.length}列)`;
+                log(`🏬 读取 Shopify 导出表: ${file.name} (包含 ${shopifyExportHeaders.length} 列, ${shopifyExportData.length} 行)`);
+                document.getElementById('learnStatusModule2').innerText = `已载入底本原表: ${file.name}`;
             };
             reader.readAsArrayBuffer(file);
         }
@@ -589,85 +622,99 @@
             return cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         }
 
-        // 🚀 零修改查找替换引擎 (精准改状态)
+        // 🚀 动态针对指定列名进行查找替换归档
         async function runProcess() {
             if(currentModule === 'module2') {
                 if(rawSourceData.length === 0) { alert("请先上传【1. 侵权系统数据表】！"); return; }
                 if(shopifyExportData.length === 0) { alert("请先上传【2. Shopify 后台导出产品表】！"); return; }
 
-                log("🔍 正在扫描侵权源表，筛选 Overall Decision == RED 的违规行...");
+                // 获取用户在前端设定的列名
+                let matchStrategy = document.getElementById('matchStrategySelect').value;
+                let userSrcSkuCol = document.getElementById('srcSkuColName').value.trim();
+                let userSrcTitleCol = document.getElementById('srcTitleColName').value.trim();
+                let userShopSkuCol = document.getElementById('shopSkuColName').value.trim();
+                let userShopTitleCol = document.getElementById('shopTitleColName').value.trim();
 
-                // 1. 查找侵权源表中的 Overall Decision 列
+                log(`⚙️ 使用比对策略: [${matchStrategy.toUpperCase()}]，侵权表SKU列名:[${userSrcSkuCol}]，Shopify表SKU列名:[${userShopSkuCol}]`);
+
+                // 定位侵权表中的列索引
                 let decisionIdx = rawSourceHeaders.findIndex(h => h.toLowerCase().includes('decision') || h.toLowerCase().includes('overall'));
-                // 查找源表中的 Title 或 SKU 或 Handle 标识列
-                let srcTitleIdx = rawSourceHeaders.findIndex(h => h.toLowerCase() === 'title' || h.toLowerCase().includes('标题'));
-                let srcSkuIdx = rawSourceHeaders.findIndex(h => h.toLowerCase().includes('sku'));
-                let srcHandleIdx = rawSourceHeaders.findIndex(h => h.toLowerCase().includes('handle'));
+                let srcSkuIdx = rawSourceHeaders.findIndex(h => h.toLowerCase() === userSrcSkuCol.toLowerCase());
+                let srcTitleIdx = rawSourceHeaders.findIndex(h => h.toLowerCase() === userSrcTitleCol.toLowerCase());
 
-                // 提取侵权源表中所有 RED 商品的唯一标识集合 (Set)
-                let redTitlesSet = new Set();
+                // 如果用户填写的列名不精确，系统开启模糊查找机制
+                if(srcSkuIdx === -1) srcSkuIdx = rawSourceHeaders.findIndex(h => h.toLowerCase().includes('sku'));
+                if(srcTitleIdx === -1) srcTitleIdx = rawSourceHeaders.findIndex(h => h.toLowerCase().includes('title') || h.toLowerCase().includes('标题'));
+
                 let redSkusSet = new Set();
-                let redHandlesSet = new Set();
+                let redTitlesSet = new Set();
 
                 rawSourceData.forEach(row => {
-                    let decisionVal = (decisionIdx !== -1 && row[decisionIdx]) ? row[decisionIdx].toString().trim().toUpperCase() : '';
-                    if(decisionVal === 'RED' || decisionVal.includes('RED')) {
-                        if(srcTitleIdx !== -1 && row[srcTitleIdx]) redTitlesSet.add(sanitizeTitle(row[srcTitleIdx]));
-                        if(srcSkuIdx !== -1 && row[srcSkuIdx]) redSkusSet.add(row[srcSkuIdx].toString().trim().toLowerCase());
-                        if(srcHandleIdx !== -1 && row[srcHandleIdx]) redHandlesSet.add(generateSmartHandle(row[srcHandleIdx]));
+                    let decisionVal = (decisionIdx !== -1 && row[decisionIdx]) ? row[decisionIdx].toString().trim().toUpperCase() : 'RED';
+                    // 只要包含 RED 或是默认未填 Decision 的违规行
+                    if(decisionVal === 'RED' || decisionVal.includes('RED') || decisionIdx === -1) {
+                        if(srcSkuIdx !== -1 && row[srcSkuIdx]) {
+                            redSkusSet.add(row[srcSkuIdx].toString().trim().toLowerCase());
+                        }
+                        if(srcTitleIdx !== -1 && row[srcTitleIdx]) {
+                            redTitlesSet.add(sanitizeTitle(row[srcTitleIdx]));
+                        }
                     }
                 });
 
-                log(`🎯 从侵权表精准提炼出 ${redTitlesSet.size + redSkusSet.size + redHandlesSet.size} 项 RED 违规特征库！开始在 Shopify 导出表中逐行精准比对...`);
+                log(`🎯 搜寻侵权表完成：共收集到 ${redSkusSet.size} 个 RED SKU，${redTitlesSet.size} 个 RED 标题！开始比对...`);
 
-                // 2. 在 Shopify 导出原表中匹配，定位 Status 列位置
+                // 定位 Shopify 导出原表中的列索引
+                let shopSkuIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === userShopSkuCol.toLowerCase());
+                let shopTitleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === userShopTitleCol.toLowerCase());
+                let shopHandleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === 'handle');
                 let statusColIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === 'status');
+
+                if(shopSkuIdx === -1) shopSkuIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase().includes('sku'));
+                if(shopTitleIdx === -1) shopTitleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase().includes('title'));
+
                 if(statusColIdx === -1) {
-                    // 若原表未包含 Status 列，自动在表尾新增该列
                     shopifyExportHeaders.push('Status');
                     statusColIdx = shopifyExportHeaders.length - 1;
                 }
 
-                let shopTitleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === 'title');
-                let shopSkuIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase().includes('sku'));
-                let shopHandleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === 'handle');
-
-                let matchedRedProductsCount = 0;
+                mappedResultData = [];
                 let redHandlesMatched = new Set();
 
-                // 遍历 Shopify 原表的所有数据行 (100% 保留原始结构与数据)
-                mappedResultData = [];
-                let currentHandleActiveIsRed = false;
+                // 算法优化：首先识别所有属于 RED 的 Handle（含所有关联多变体行）
+                shopifyExportData.forEach(row => {
+                    let skuVal = (shopSkuIdx !== -1 && row[shopSkuIdx]) ? row[shopSkuIdx].toString().trim().toLowerCase() : '';
+                    let titleVal = (shopTitleIdx !== -1 && row[shopTitleIdx]) ? sanitizeTitle(row[shopTitleIdx]) : '';
+                    let handleVal = (shopHandleIdx !== -1 && row[shopHandleIdx]) ? generateSmartHandle(row[shopHandleIdx]) : '';
 
-                shopifyExportData.forEach((row, rIdx) => {
-                    // 复制一行原样数据
+                    let isMatch = false;
+
+                    if((matchStrategy === 'sku' || matchStrategy === 'both') && skuVal) {
+                        // 包含或相等比对
+                        if(redSkusSet.has(skuVal)) isMatch = true;
+                    }
+                    if((matchStrategy === 'title' || matchStrategy === 'both') && titleVal) {
+                        if(redTitlesSet.has(titleVal)) isMatch = true;
+                    }
+
+                    if(isMatch && handleVal) {
+                        redHandlesMatched.add(handleVal);
+                    }
+                });
+
+                log(`🔥 在 Shopify 产品表中比对命中 ${redHandlesMatched.size} 个商品的 Handle！开始执行全变体行归档更改...`);
+
+                // 第二次遍历：根据被调为 RED 的 Handle 统一写入 archived 状态
+                shopifyExportData.forEach(row => {
                     let newRow = [...row];
                     while(newRow.length < shopifyExportHeaders.length) newRow.push('');
 
                     let handleVal = (shopHandleIdx !== -1 && newRow[shopHandleIdx]) ? generateSmartHandle(newRow[shopHandleIdx]) : '';
-                    let titleVal = (shopTitleIdx !== -1 && newRow[shopTitleIdx]) ? sanitizeTitle(newRow[shopTitleIdx]) : '';
-                    let skuVal = (shopSkuIdx !== -1 && newRow[shopSkuIdx]) ? newRow[shopSkuIdx].toString().trim().toLowerCase() : '';
 
-                    // 检查此行或其主 Handle 是否属于 RED 违规产品
-                    let isRedMatch = false;
-
-                    if(titleVal && redTitlesSet.has(titleVal)) isRedMatch = true;
-                    if(skuVal && redSkusSet.has(skuVal)) isRedMatch = true;
-                    if(handleVal && redHandlesSet.has(handleVal)) isRedMatch = true;
-
-                    // 变体行关联匹配：若首行标题匹配上，则相同 Handle 的空白标题变体行也一并判定为 RED
-                    if(isRedMatch) {
-                        redHandlesMatched.add(handleVal);
-                    } else if(handleVal && redHandlesMatched.has(handleVal)) {
-                        isRedMatch = true;
+                    if(handleVal && redHandlesMatched.has(handleVal)) {
+                        newRow[statusColIdx] = 'archived'; // 状态置为归档
                     }
 
-                    // 如果匹配到了侵权违规
-                    if(isRedMatch) {
-                        newRow[statusColIdx] = 'archived'; // 仅改状态为归档，其余一字不动！
-                    }
-
-                    // 构建导出对象
                     let rowObj = {};
                     shopifyExportHeaders.forEach((hName, idx) => {
                         rowObj[hName] = newRow[idx] !== undefined ? newRow[idx] : '';
@@ -678,7 +725,7 @@
                 document.getElementById('rowCount').innerText = mappedResultData.length;
                 document.getElementById('violateCount').innerText = redHandlesMatched.size;
 
-                log(`🎉 匹配处理成功！在 Shopify 表中成功找到并把 ${redHandlesMatched.size} 个违规产品（含所有多变体行）的状态精准修改为 archived！其他所有数据行与列全封不动保留。`);
+                log(`🎉 比对完成！共把 ${redHandlesMatched.size} 个商品（含主商品行与多变体子行）的状态修改为 archived！可以导出 CSV 进行后台同步覆盖了！`);
 
             } else {
                 // 上架与白底模块常规生成逻辑
