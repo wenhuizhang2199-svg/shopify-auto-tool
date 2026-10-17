@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 数据自动化处理中心</title>
+    <title>Shopify 数据自动化处理中心 (全拖拽上传支持版)</title>
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 引入 SheetJS 支持读取 Excel (.xlsx/.xls) 文件 -->
@@ -34,8 +34,9 @@
         .btn-outline:hover { background: #f1f2f3; }
         .btn-sm { padding: 4px 8px; font-size: 12px; }
 
-        /* 置顶恢复：全局通用学习中心 */
-        .global-learn-card { background: #f0fdf4; border: 2px dashed var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+        /* 置顶全局学习卡 */
+        .global-learn-card { background: #f0fdf4; border: 2px dashed var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 24px; transition: 0.2s; }
+        .global-learn-card.dragover { background: #d1fae5; border-color: #047857; border-style: solid; }
         .global-learn-header { display: flex; justify-content: space-between; align-items: center; }
 
         /* 主功能导航切换卡 */
@@ -61,8 +62,10 @@
         .setting-row select, .setting-row input { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; flex: 1; }
 
         .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafbfb; }
-        .upload-area:hover { border-color: var(--primary); background: #f0fdf4; }
+        
+        /* 强化拖拽视觉反应的上传交互区域 */
+        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 28px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease-in-out; background: #fafbfb; }
+        .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: #e4f5ed; transform: scale(1.005); }
         .upload-area input { display: none; }
 
         .error-alert-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; color: #991b1b; margin-bottom: 16px; display: none; }
@@ -94,21 +97,21 @@
 
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">📘 汽配/工业品/家具智能处理版</span></h1>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">📂 全拖拽交互版</span></h1>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span id="userStatus" style="font-size: 13px; color: var(--subtext);">未登录</span>
                 <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
             </div>
         </header>
 
-        <!-- 🧠 1. 恢复：公共/全局 Shopify 官方模板学习中心（置顶常驻） -->
-        <div class="global-learn-card">
+        <!-- 🧠 全局通用 Shopify 模板学习中心（支持拖拽上传） -->
+        <div class="global-learn-card" id="globalLearnDropZone">
             <div class="global-learn-header">
                 <div>
                     <h3 style="font-size: 16px; color: var(--primary);">🧠 全局 Shopify 官方模板学习中心</h3>
-                    <p style="font-size: 13px; color: var(--subtext);" id="globalLearnStatusText">在此上传做好的标准 Shopify 模板表格，系统将自动锁定列名结构与固定填充值，全局共享。</p>
+                    <p style="font-size: 13px; color: var(--subtext);" id="globalLearnStatusText">在此拖拽或点击上传标准的 Shopify 模板表格，系统将自动锁定列结构与默认填充值。</p>
                 </div>
-                <button class="btn" onclick="document.getElementById('globalTemplateInput').click()">上传 Shopify 模板表供学习</button>
+                <button class="btn" onclick="document.getElementById('globalTemplateInput').click()">点击或拖拽模板表上传</button>
                 <input type="file" id="globalTemplateInput" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleGlobalTemplateLearning(event)">
             </div>
         </div>
@@ -128,9 +131,9 @@
 
         <div class="grid">
             <main>
-                <!-- 2. 动态蓝色说明标签（随选择的模块实时变动显示对应的专属说明） -->
+                <!-- 动态蓝色说明标签 -->
                 <div class="knowledge-card" id="moduleKnowledgeTag">
-                    📘 <b>产品上架功能：</b> 导入原始数据源表后，系统会自动剔除标题末尾横杠，按多图自动进行纵向扩展，并生成 Image position 序号。
+                    📘 <b>产品上架功能：</b> 拖拽导入原始数据源表后，系统会自动清洗标题尾部的横杠，按多图自动进行纵向扩展，并生成 Image position 顺序索引。
                 </div>
 
                 <!-- 报错警示框 -->
@@ -163,30 +166,33 @@
                             </select>
                         </div>
 
-                        <div class="upload-area" onclick="document.getElementById('sourceInput1').click()">
+                        <!-- 拖拽上传区域 1 -->
+                        <div class="upload-area" id="dropZoneSource1" onclick="document.getElementById('sourceInput1').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">📄</p>
-                            <p style="font-weight: 600;">上传待上架产品的数据源表 (.xlsx, .xls, .csv)</p>
-                            <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText1">包含标题、型号、运费调整后价格、多图</p>
+                            <p style="font-weight: 600;">拖拽文件到此处，或点击选择待上架数据源表</p>
+                            <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText1">支持拖拽 .xlsx, .xls, .csv 文件（包含标题、型号、价格、多图）</p>
                             <input type="file" id="sourceInput1" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. 政策违规下架专属面板 (双表双入口) -->
+                <!-- 2. 政策违规下架专属面板 (支持双表拖拽) -->
                 <div id="panelModule2" class="module-panel" style="display: none;">
                     <div class="card">
-                        <div class="card-title">🚫 政策下架双表上传比对中心</div>
+                        <div class="card-title">🚫 政策下架双表上传比对中心 (均支持拖拽)</div>
                         <div class="upload-grid">
-                            <div class="upload-area" onclick="document.getElementById('sourceInput2').click()">
+                            <!-- 拖拽上传区域 2-1 -->
+                            <div class="upload-area" id="dropZoneSource2" onclick="document.getElementById('sourceInput2').click()">
                                 <p style="font-size: 28px; margin-bottom: 4px;">🔍</p>
-                                <p style="font-weight: 600;">1. 上传侵权系统导出表</p>
-                                <p style="font-size: 12px; color: var(--subtext);" id="sourceStatusText2">自动匹配 Overall Decision == RED 的违规项</p>
+                                <p style="font-weight: 600;">1. 拖拽侵权系统导出表到此处</p>
+                                <p style="font-size: 12px; color: var(--subtext);" id="sourceStatusText2">自动识别 Overall Decision == RED 的违规行</p>
                                 <input type="file" id="sourceInput2" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                             </div>
-                            <div class="upload-area" onclick="document.getElementById('templateInput2').click()">
+                            <!-- 拖拽上传区域 2-2 -->
+                            <div class="upload-area" id="dropZoneTemplate2" onclick="document.getElementById('templateInput2').click()">
                                 <p style="font-size: 28px; margin-bottom: 4px;">🏬</p>
-                                <p style="font-weight: 600;">2. 上传 Shopify 后台导出表</p>
-                                <p style="font-size: 12px; color: var(--subtext);" id="learnStatusModule2">做定位底本，自动把违规产品 Status 改为 archived</p>
+                                <p style="font-weight: 600;">2. 拖拽 Shopify 后台导出表到此处</p>
+                                <p style="font-size: 12px; color: var(--subtext);" id="learnStatusModule2">用来做定位底本，自动把 Status 改为 archived</p>
                                 <input type="file" id="templateInput2" accept=".xlsx, .xls, .csv" onchange="handleModuleTemplateLearning(event, 'module2')">
                             </div>
                         </div>
@@ -197,9 +203,10 @@
                 <div id="panelModule3" class="module-panel" style="display: none;">
                     <div class="card">
                         <div class="card-title">🖼️ 首图白底覆盖专属文件上传</div>
-                        <div class="upload-area" onclick="document.getElementById('sourceInput3').click()">
+                        <!-- 拖拽上传区域 3 -->
+                        <div class="upload-area" id="dropZoneSource3" onclick="document.getElementById('sourceInput3').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">🖼️</p>
-                            <p style="font-weight: 600;">拖拽上传包含替换图片链接的数据表 (.xlsx, .csv)</p>
+                            <p style="font-weight: 600;">拖拽替换图片链接表到此处，或点击选择</p>
                             <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText3">将自动对应 Product image URL 进行精准替换</p>
                             <input type="file" id="sourceInput3" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                         </div>
@@ -242,7 +249,7 @@
 
                 <div class="card">
                     <div class="card-title">实时处理日志</div>
-                    <div class="log-box" id="logBox">[系统初始化完成] 准备就绪...\n</div>
+                    <div class="log-box" id="logBox">[系统初始化完成] 全面板拖拽交互响应机制已就绪...\n</div>
                 </div>
             </main>
 
@@ -293,11 +300,10 @@
             'module3': { headers: [], fixedValues: {} }
         };
 
-        // 各板块提示卡文字字典
         const KNOWLEDGE_DESCRIPTIONS = {
-            'module1': '📘 <b>产品上架功能：</b> 导入数据源表后，系统会自动清洗标题尾部的横杠，按多图自动进行纵向扩展，并生成 Image position 顺序索引。',
-            'module2': '📘 <b>自动对比下架功能：</b> 上传侵权系统表与 Shopify 导出表后，系统将自动锁定 Overall Decision == RED 的违规产品，并将它们的 Status 设为 archived。',
-            'module3': '📘 <b>首图白底覆盖功能：</b> 上传包含白底图片链接的数据表，系统会自动抓取首图进行替换与规范化格式导出。'
+            'module1': '📘 <b>产品上架功能：</b> 拖拽导入数据源表后，系统会自动清洗标题尾部的横杠，按多图自动进行纵向扩展，并生成 Image position 顺序索引。',
+            'module2': '📘 <b>自动对比下架功能：</b> 拖拽上传侵权系统表与 Shopify 导出表后，系统将自动锁定 Overall Decision == RED 的违规产品，并将它们的 Status 设为 archived。',
+            'module3': '📘 <b>首图白底覆盖功能：</b> 拖拽上传包含白底图片链接的数据表，系统会自动抓取首图进行替换与规范化格式导出。'
         };
 
         let defaultMappings = {
@@ -326,7 +332,6 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // 切换模块时，同步更新蓝色知识卡与界面说明
         function switchModule(modId) {
             currentModule = modId;
             document.querySelectorAll('.nav-card').forEach(c => c.classList.remove('active'));
@@ -335,7 +340,6 @@
             document.querySelectorAll('.module-panel').forEach(p => p.style.display = 'none');
             document.getElementById('panel' + modId.charAt(0).toUpperCase() + modId.slice(1)).style.display = 'block';
 
-            // 💡 核心更新：动态替换蓝色提示框里的文字内容
             document.getElementById('moduleKnowledgeTag').innerHTML = KNOWLEDGE_DESCRIPTIONS[modId];
 
             let names = { 'module1': '【产品上架】', 'module2': '【政策下架】', 'module3': '【首图白底】' };
@@ -365,7 +369,7 @@
                 document.getElementById('userStatus').innerText = `👤 登录账号: ${currentUser.email}`;
                 document.getElementById('logoutBtn').style.display = 'inline-block';
                 
-                loadGlobalLearnedTemplate(); // 载入全局公共模板
+                loadGlobalLearnedTemplate();
                 switchModule('module1');
             } else {
                 document.getElementById('authModal').style.display = 'flex';
@@ -391,11 +395,9 @@
             location.reload();
         }
 
-        // 🧠 全局通用公共模板学习处理函数
-        function handleGlobalTemplateLearning(e) {
-            const file = e.target.files[0];
+        // 🧠 全局通用模板处理
+        function parseAndLearnGlobalTemplate(file) {
             if(!file) return;
-
             const reader = new FileReader();
             reader.onload = async function(evt) {
                 let data = new Uint8Array(evt.target.result);
@@ -411,7 +413,7 @@
                     for(let c = 0; c < globalTemplateHeaders.length; c++) {
                         let colName = globalTemplateHeaders[c];
                         let val = jsonRows[1][c];
-                        if(val !== undefined && val !== '') fixedValues[colName] = val;
+                        if(val !== undefined && val !== '') globalTemplateFixedValues[colName] = val;
                     }
                 }
 
@@ -425,10 +427,14 @@
                     }]);
                 }
 
-                document.getElementById('globalLearnStatusText').innerHTML = `<b style="color:var(--primary);">✨ 已学习并生效全局通用模板：${file.name} (锁定 ${globalTemplateHeaders.length} 个标准列)</b>`;
-                log(`🧠 全局公共学习成功！已同步记忆 ${globalTemplateHeaders.length} 个标准列格式！`);
+                document.getElementById('globalLearnStatusText').innerHTML = `<b style="color:var(--primary);">✨ 已拖拽学习全局通用模板：${file.name} (锁定 ${globalTemplateHeaders.length} 个标准列)</b>`;
+                log(`🧠 [全局模板] 成功拖拽导入并记忆 ${globalTemplateHeaders.length} 个列格式！`);
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function handleGlobalTemplateLearning(e) {
+            parseAndLearnGlobalTemplate(e.target.files[0]);
         }
 
         async function loadGlobalLearnedTemplate() {
@@ -446,10 +452,9 @@
             }
         }
 
-        function handleModuleTemplateLearning(e, modId) {
-            const file = e.target.files[0];
+        // 板块专有底本解析
+        function parseAndLearnModuleTemplate(file, modId) {
             if(!file) return;
-
             const reader = new FileReader();
             reader.onload = async function(evt) {
                 let data = new Uint8Array(evt.target.result);
@@ -482,10 +487,14 @@
                 }
 
                 let el = document.getElementById(`learnStatus${modId.charAt(0).toUpperCase() + modId.slice(1)}`);
-                if(el) el.innerHTML = `<b style="color:var(--primary);">✨ 已载入比对底本：${file.name} (${headers.length} 列)</b>`;
-                log(`🧠 [${modId}] 专属底本已存入云端数据库！`);
+                if(el) el.innerHTML = `<b style="color:var(--primary);">✨ 已载入底本：${file.name} (${headers.length} 列)</b>`;
+                log(`🧠 [${modId}] 专属底本已成功拖拽上传并持久化写入云端！`);
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function handleModuleTemplateLearning(e, modId) {
+            parseAndLearnModuleTemplate(e.target.files[0], modId);
         }
 
         async function loadModuleTemplateFromCloud(modId) {
@@ -529,7 +538,7 @@
                 mapping_rules: currentMappingList,
                 updated_at: new Date()
             }]);
-            alert(`🎉 [${currentModule}] 映射规则已成功上云！`);
+            alert(`🎉 [${currentModule}] 映射规则已成功保存上云！`);
         }
 
         async function loadSavedMappingFromCloud(modId) {
@@ -548,10 +557,9 @@
             renderMappingTable();
         }
 
-        function handleSourceUpload(e) {
-            const file = e.target.files[0];
+        // 源数据解析
+        function parseSourceFile(file) {
             if(!file) return;
-
             const reader = new FileReader();
             reader.onload = function(evt) {
                 let data = new Uint8Array(evt.target.result);
@@ -563,14 +571,48 @@
                 rawSourceHeaders = jsonRows[0].map(h => (h||'').toString().trim());
                 rawSourceData = jsonRows.slice(1).filter(r => r.length > 0);
 
-                log(`✅ 成功读取数据源文件: ${file.name} (${rawSourceData.length} 行)`);
+                log(`✅ 成功通过拖拽/上传读取数据源文件: ${file.name} (${rawSourceData.length} 行)`);
                 document.getElementById('totalCount').innerText = rawSourceData.length;
                 
                 let elId = `sourceStatusText${currentModule.slice(-1)}`;
-                document.getElementById(elId).innerText = `已载入源表: ${file.name}`;
+                document.getElementById(elId).innerText = `已拖拽/载入源表: ${file.name}`;
                 document.getElementById('errorAlertBox').style.display = 'none';
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function handleSourceUpload(e) {
+            parseSourceFile(e.target.files[0]);
+        }
+
+        // 🔗 拖拽监听绑定通用逻辑 (Drag & Drop Engine)
+        function bindDragAndDrop(elementId, onFileDropCallback) {
+            const dropZone = document.getElementById(elementId);
+            if (!dropZone) return;
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove('dragover');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    onFileDropCallback(files[0]);
+                }
+            }, false);
         }
 
         function sanitizeTitle(str) {
@@ -589,14 +631,13 @@
         }
 
         async function runProcess() {
-            if(rawSourceData.length === 0) { alert("请先上传待处理的数据源文件！"); return; }
+            if(rawSourceData.length === 0) { alert("请先上传或拖拽待处理的数据源文件！"); return; }
 
             let alertBox = document.getElementById('errorAlertBox');
             let alertContent = document.getElementById('errorAlertContent');
             alertBox.style.display = 'none';
             alertContent.innerHTML = '';
 
-            // 使用专有模板，若未单独上传则使用全局公共模板
             let tInfo = moduleTemplates[currentModule].headers.length > 0 ? moduleTemplates[currentModule] : { headers: globalTemplateHeaders, fixedValues: globalTemplateFixedValues };
             let finalHeaders = tInfo.headers.length > 0 ? tInfo.headers : [
                 'Handle', 'Title', 'Option1 Name', 'Option1 Value', 'Variant SKU', 'Variant Price', 'Status'
@@ -767,7 +808,21 @@
             log(`💾 成功下载表格: ${filename}`);
         }
 
-        window.onload = function() { initSupabase(); }
+        // 初始化拖拽监听绑定
+        window.onload = function() { 
+            initSupabase(); 
+
+            // 绑定全局模板拖拽
+            bindDragAndDrop('globalLearnDropZone', parseAndLearnGlobalTemplate);
+
+            // 绑定数据源拖拽
+            bindDragAndDrop('dropZoneSource1', parseSourceFile);
+            bindDragAndDrop('dropZoneSource2', parseSourceFile);
+            bindDragAndDrop('dropZoneSource3', parseSourceFile);
+
+            // 绑定模块2模板底本拖拽
+            bindDragAndDrop('dropZoneTemplate2', (file) => parseAndLearnModuleTemplate(file, 'module2'));
+        }
     </script>
 </body>
 </html>
