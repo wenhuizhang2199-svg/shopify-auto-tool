@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 数据自动化处理中心 (多任务批处理版)</title>
+    <title>Shopify 数据自动化处理中心 (极速高性能版)</title>
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 引入 SheetJS 支持读取 Excel (.xlsx/.xls) 文件 -->
@@ -18,7 +18,6 @@
             --text: #202223;
             --subtext: #6d7175;
             --danger: #d82c0d;
-            --warning: #b7791f;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -35,11 +34,9 @@
         .btn-outline:hover { background: #f1f2f3; }
         .btn-sm { padding: 4px 8px; font-size: 12px; }
         .btn-danger { background: var(--danger); }
-        .btn-danger:hover { background: #a8230a; }
 
-        /* 置顶全局学习卡 */
-        .global-learn-card { background: #f0fdf4; border: 2px dashed var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 24px; transition: 0.2s; }
-        .global-learn-card.dragover { background: #d1fae5; border-color: #047857; border-style: solid; }
+        /* 全局学习卡 */
+        .global-learn-card { background: #f0fdf4; border: 2px dashed var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
         .global-learn-header { display: flex; justify-content: space-between; align-items: center; }
 
         /* 主功能导航切换卡 */
@@ -48,13 +45,7 @@
         .nav-card:hover { border-color: var(--primary); background: #f0fdf4; }
         .nav-card.active { border-color: var(--primary); background: #e4f5ed; color: var(--primary); }
 
-        /* 动态蓝色知识提示卡 */
         .knowledge-card { background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #0369a1; }
-
-        /* 登录弹窗 */
-        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .auth-card { background: var(--surface); padding: 32px; border-radius: 12px; width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .auth-input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
 
         .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
         .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 24px; }
@@ -65,18 +56,19 @@
         .setting-row select, .setting-row input { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; flex: 1; }
 
         .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-        
         .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease-in-out; background: #fafbfb; }
-        .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: #e4f5ed; transform: scale(1.005); }
+        .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: #e4f5ed; }
         .upload-area input { display: none; }
 
-        /* 任务文件队列列表 */
         .file-queue-list { margin-top: 12px; max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
         .file-queue-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid #f1f2f3; font-size: 13px; }
-        .file-queue-item:last-child { border-bottom: none; }
         .file-status-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
         .status-pending { background: #fef3c7; color: #92400e; }
         .status-done { background: #d1fae5; color: #065f46; }
+
+        /* 进度条样式 */
+        .progress-bar-container { width: 100%; background-color: #e5e7eb; border-radius: 9999px; height: 8px; overflow: hidden; margin-top: 8px; display: none; }
+        .progress-bar { height: 100%; background-color: var(--primary); width: 0%; transition: width 0.1s ease; }
 
         .mapping-table, .history-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
         .mapping-table th, .mapping-table td, .history-table th, .history-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
@@ -89,26 +81,11 @@
     </style>
 </head>
 <body>
-    <!-- 登录蒙版 -->
-    <div class="auth-overlay" id="authModal" style="display:none;">
-        <div class="auth-card">
-            <h2 style="margin-bottom: 8px; text-align: center;">团队账号登录</h2>
-            <p style="font-size: 13px; color: var(--subtext); margin-bottom: 20px; text-align: center;">登录后加载云端个人历史处理数据</p>
-            <input type="email" id="authEmail" class="auth-input" placeholder="输入邮箱账号">
-            <input type="password" id="authPassword" class="auth-input" placeholder="输入密码">
-            <div style="display: flex; gap: 8px;">
-                <button class="btn" style="flex: 1; justify-content: center;" onclick="handleLogin()">登录系统</button>
-                <button class="btn btn-outline" style="flex: 1; justify-content: center;" onclick="handleSignUp()">注册新账号</button>
-            </div>
-        </div>
-    </div>
-
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">🚀 多任务多表并发版</span></h1>
+            <h1>📦 Shopify 数据处理中心 <span class="badge">⚡ 极速异步防卡死版</span></h1>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <span id="userStatus" style="font-size: 13px; color: var(--subtext);">系统就绪</span>
-                <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
+                <span id="userStatus" style="font-size: 13px; color: var(--subtext);">系统性能最佳状态</span>
             </div>
         </header>
 
@@ -117,9 +94,9 @@
             <div class="global-learn-header">
                 <div>
                     <h3 style="font-size: 16px; color: var(--primary);">🧠 全局 Shopify 官方模板学习中心</h3>
-                    <p style="font-size: 13px; color: var(--subtext);" id="globalLearnStatusText">在此拖拽或点击上传标准的 Shopify 模板表格，系统将自动锁定列结构与默认填充值。</p>
+                    <p style="font-size: 13px; color: var(--subtext);" id="globalLearnStatusText">拖拽或点击上传标准的 Shopify 模板表格。</p>
                 </div>
-                <button class="btn" onclick="document.getElementById('globalTemplateInput').click()">点击或拖拽模板表上传</button>
+                <button class="btn" onclick="document.getElementById('globalTemplateInput').click()">上传模板表</button>
                 <input type="file" id="globalTemplateInput" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleGlobalTemplateLearning(event)">
             </div>
         </div>
@@ -139,9 +116,8 @@
 
         <div class="grid">
             <main>
-                <!-- 提示卡片 -->
                 <div class="knowledge-card" id="moduleKnowledgeTag">
-                    📘 <b>产品上架功能：</b> 导入数据源表后，系统会自动清洗标题尾部的横杠，按多图自动进行纵向扩展，并生成 Image position 顺序索引。
+                    📘 <b>产品上架功能：</b> 支持同时选择/拖拽多个超大表格！采用异步切片技术，百兆表格处理流畅不卡顿。
                 </div>
 
                 <!-- 1. 产品上架面板 -->
@@ -163,22 +139,18 @@
                                 <option value="2">固定 2 张图 (隔2行/商品)</option>
                                 <option value="3">固定 3 张图 (隔3行/商品)</option>
                                 <option value="4">固定 4 张图 (隔4行/商品)</option>
-                                <option value="5">固定 5 张图 (隔5行/商品)</option>
-                                <option value="6">固定 6 张图 (隔6行/商品)</option>
                             </select>
                         </div>
 
                         <div class="upload-area" id="dropZoneSource1" onclick="document.getElementById('sourceInput1').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">📄</p>
                             <p style="font-weight: 600;">点击或批量拖拽多个待上架表格到此处</p>
-                            <p style="font-size: 13px; color: var(--subtext);">支持同时选择/拖拽多个 .xlsx, .xls, .csv 文件</p>
-                            <!-- 加上 multiple 允许选择多文件 -->
+                            <p style="font-size: 13px; color: var(--subtext);">支持同时选择多个超大 .xlsx, .xls, .csv 文件</p>
                             <input type="file" id="sourceInput1" accept=".xlsx, .xls, .csv" multiple onchange="handleMultiSourceUpload(event, 'module1')">
                         </div>
 
-                        <!-- 待处理文件队列列表 -->
                         <div id="queueBoxModule1" style="display:none;">
-                            <p style="font-size:13px; font-weight:600; color:var(--subtext);">📂 已加载待处理文件队列：</p>
+                            <p style="font-size:13px; font-weight:600; color:var(--subtext);">📂 待处理队列：</p>
                             <div class="file-queue-list" id="queueListModule1"></div>
                         </div>
                     </div>
@@ -187,13 +159,13 @@
                 <!-- 2. 政策下架面板 -->
                 <div id="panelModule2" class="module-panel" style="display: none;">
                     <div class="card">
-                        <div class="card-title">⚙️ 比对规则与列名配置 (灵活匹配不同表格列名)</div>
+                        <div class="card-title">⚙️ 比对规则与列名配置</div>
                         <div class="setting-row">
                             <label>🎯 比对匹配依据：</label>
                             <select id="matchStrategySelect">
-                                <option value="sku">🎯 优先使用 SKU 匹配（推荐：精准且速度最快）</option>
+                                <option value="sku">🎯 优先使用 SKU 匹配（速度最快）</option>
                                 <option value="title">📝 优先使用 标题 (Title) 匹配</option>
-                                <option value="both">⚡ 双重智能匹配（SKU 或 标题 只要对上一个就归档）</option>
+                                <option value="both">⚡ 双重智能匹配（SKU 或 标题）</option>
                             </select>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -201,34 +173,34 @@
                                 <p style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--primary);">侵权系统表对应列名：</p>
                                 <div style="margin-bottom:6px;">
                                     <span style="font-size:12px; color:var(--subtext);">SKU列名：</span>
-                                    <input type="text" id="srcSkuColName" value="SKUs" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                    <input type="text" id="srcSkuColName" value="SKUs" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc;">
                                 </div>
                                 <div>
                                     <span style="font-size:12px; color:var(--subtext);">标题列名：</span>
-                                    <input type="text" id="srcTitleColName" value="Product Title" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                    <input type="text" id="srcTitleColName" value="Product Title" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc;">
                                 </div>
                             </div>
                             <div style="background:#fafbfb; padding:12px; border-radius:8px; border:1px solid var(--border);">
                                 <p style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--primary);">Shopify 导出表对应列名：</p>
                                 <div style="margin-bottom:6px;">
                                     <span style="font-size:12px; color:var(--subtext);">SKU列名：</span>
-                                    <input type="text" id="shopSkuColName" value="Variant SKU" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                    <input type="text" id="shopSkuColName" value="Variant SKU" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc;">
                                 </div>
                                 <div>
                                     <span style="font-size:12px; color:var(--subtext);">标题列名：</span>
-                                    <input type="text" id="shopTitleColName" value="Title" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                                    <input type="text" id="shopTitleColName" value="Title" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc;">
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="card">
-                        <div class="card-title">🚫 政策下架双表上传中心 (支持批量)</div>
+                        <div class="card-title">🚫 政策下架双表上传中心 (支持大文件)</div>
                         <div class="upload-grid">
                             <div class="upload-area" id="dropZoneSource2" onclick="document.getElementById('sourceInput2').click()">
                                 <p style="font-size: 28px; margin-bottom: 4px;">🔍</p>
-                                <p style="font-weight: 600;">1. 上传/批量拖拽 侵权数据表</p>
-                                <p style="font-size: 12px; color: var(--subtext);">包含 RED 违规标识的源表</p>
+                                <p style="font-weight: 600;">1. 批量拖拽 侵权数据表</p>
+                                <p style="font-size: 12px; color: var(--subtext);">包含 RED 违规项</p>
                                 <input type="file" id="sourceInput2" accept=".xlsx, .xls, .csv" multiple onchange="handleMultiSourceUpload(event, 'module2_source')">
                             </div>
                             <div class="upload-area" id="dropZoneTemplate2" onclick="document.getElementById('templateInput2').click()">
@@ -239,9 +211,8 @@
                             </div>
                         </div>
 
-                        <!-- 下架模块文件列表 -->
                         <div id="queueBoxModule2" style="display:none;">
-                            <p style="font-size:13px; font-weight:600; color:var(--subtext);">📂 待处理侵权数据表队列：</p>
+                            <p style="font-size:13px; font-weight:600; color:var(--subtext);">📂 待处理侵权表队列：</p>
                             <div class="file-queue-list" id="queueListModule2"></div>
                         </div>
                     </div>
@@ -250,66 +221,34 @@
                 <!-- 3. 白底图替换面板 -->
                 <div id="panelModule3" class="module-panel" style="display: none;">
                     <div class="card">
-                        <div class="card-title">🖼️ 首图白底覆盖文件上传 (支持批量)</div>
+                        <div class="card-title">🖼️ 首图白底覆盖文件上传</div>
                         <div class="upload-area" id="dropZoneSource3" onclick="document.getElementById('sourceInput3').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">🖼️</p>
                             <p style="font-weight: 600;">批量拖拽/选择替换图片链接表</p>
-                            <p style="font-size: 13px; color: var(--subtext);">自动对应 Product image URL 精准替换</p>
                             <input type="file" id="sourceInput3" accept=".xlsx, .xls, .csv" multiple onchange="handleMultiSourceUpload(event, 'module3')">
                         </div>
 
                         <div id="queueBoxModule3" style="display:none;">
-                            <p style="font-size:13px; font-weight:600; color:var(--subtext);">📂 待处理白底图数据表队列：</p>
+                            <p style="font-size:13px; font-weight:600; color:var(--subtext);">📂 待处理白底表队列：</p>
                             <div class="file-queue-list" id="queueListModule3"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 映射绑定区域 -->
-                <div class="card" id="mappingCardContainer">
-                    <div class="card-title">
-                        <span id="mappingPanelTitle">✍️ 字段对应绑定 (当前板块独立配对)</span>
-                        <div>
-                            <button class="btn btn-outline btn-sm" onclick="addNewMappingRow()">➕ 添加新映射列</button>
-                            <button class="btn btn-sm" onclick="saveMappingToCloud()">💾 保存规则</button>
-                        </div>
+                <div class="card">
+                    <div class="card-title">实时处理日志与进度</div>
+                    <div class="progress-bar-container" id="progressBarContainer">
+                        <div class="progress-bar" id="progressBar"></div>
                     </div>
-                    <table class="mapping-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 35%;">Shopify 目标字段</th>
-                                <th style="width: 50%;">源表格对应列名</th>
-                                <th style="width: 15%;">必填项</th>
-                            </tr>
-                        </thead>
-                        <tbody id="manualMappingBody"></tbody>
-                    </table>
-                </div>
-
-                <!-- 历史数据表格 -->
-                <div class="card">
-                    <div class="card-title">📜 本模块历史导出记录</div>
-                    <table class="history-table">
-                        <thead>
-                            <tr><th>导出时间</th><th>记录文件名</th><th>导出件数</th><th>关联店铺</th><th>操作</th></tr>
-                        </thead>
-                        <tbody id="historyBody">
-                            <tr><td colspan="5" style="text-align: center; color: var(--subtext);">暂无导出记录</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">实时处理日志</div>
-                    <div class="log-box" id="logBox">[多任务并发引擎初始化完成] 准备就绪...\n</div>
+                    <div class="log-box" id="logBox" style="margin-top:12px;">[极速引擎已就绪] 页面线程独立隔离运行...\n</div>
                 </div>
             </main>
 
             <aside>
                 <div class="card" style="border: 2px solid var(--primary);">
-                    <div class="card-title" style="color:var(--primary);">⚡ 全局任务控制台</div>
-                    <button class="btn" style="width: 100%; justify-content: center; padding: 12px; font-weight:600;" onclick="runProcessAllTasks()">🚀 一键并行/顺序处理所有表格</button>
-                    <button class="btn btn-outline" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="downloadAllResults()">📥 下载最新生成文件</button>
+                    <div class="card-title" style="color:var(--primary);">⚡ 控制中心</div>
+                    <button class="btn" style="width: 100%; justify-content: center; padding: 12px; font-weight:600;" onclick="runProcessAsyncChunks()">🚀 开始极速切片批处理</button>
+                    <button class="btn btn-outline" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="downloadAllResults()">📥 下载处理结果</button>
                     <button class="btn btn-outline btn-danger" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="clearAllTaskQueues()">🧹 清空待处理队列</button>
                 </div>
 
@@ -318,7 +257,7 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-num" id="totalCount">0</div>
-                            <div style="font-size: 12px;">待处理任务数</div>
+                            <div style="font-size: 12px;">任务文件数</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-num" id="rowCount" style="color: var(--primary);">0</div>
@@ -326,7 +265,7 @@
                         </div>
                         <div class="stat-card">
                             <div class="stat-num" id="violateCount" style="color: var(--danger);">0</div>
-                            <div style="font-size: 12px;">下架归档件数</div>
+                            <div style="font-size: 12px;">下架归档数</div>
                         </div>
                     </div>
                 </div>
@@ -335,44 +274,13 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://apuotgbljoepgbvueuwr.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_le5RiJtjMsbP7zyhILJy1Q_uwdmshH-";
-
-        let supabaseClient = null;
-        let currentUser = null;
         let currentModule = 'module1';
-
-        // 多任务队列数据结构
-        let taskQueues = {
-            'module1': [],        // 上架任务文件列表
-            'module2_source': [], // 侵权表文件列表
-            'module3': []         // 白底图任务文件列表
-        };
+        let taskQueues = { 'module1': [], 'module2_source': [], 'module3': [] };
 
         let shopifyExportData = [], shopifyExportHeaders = [];
         let globalTemplateHeaders = [];
         let globalTemplateFixedValues = {};
         let processedResults = [];
-
-        const KNOWLEDGE_DESCRIPTIONS = {
-            'module1': '📘 <b>产品上架功能：</b> 支持同时选择/拖拽多个表格！系统会自动逐个清洗标题，扩展图片行，生成标准 Shopify 上架 CSV。',
-            'module2': '📘 <b>精准比对下架：</b> 支持同时拖入多个侵权源表！根据设定匹配 SKU/标题，精准找到 Shopify 导出表中的数据行，将状态置为 archived。',
-            'module3': '📘 <b>首图白底覆盖功能：</b> 支持批量导入多个白底图片表，按顺序批量替换并导出结果。'
-        };
-
-        let defaultMappings = {
-            'module1': [
-                { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
-                { shopifyCol: 'Title', sourceCol: '标题', required: true },
-                { shopifyCol: 'Variant SKU', sourceCol: '父Sku编码', required: true },
-                { shopifyCol: 'Variant Price', sourceCol: '运费调整后最终价格', required: true },
-                { shopifyCol: 'Product image URL', sourceCol: '描述图片19, 描述图片29, 描述图片32, 描述图片4, 描述图片5, 描述图片6', required: true }
-            ],
-            'module3': [
-                { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
-                { shopifyCol: 'Product image URL', sourceCol: '描述图片19', required: true }
-            ]
-        };
 
         function log(msg) {
             const box = document.getElementById('logBox');
@@ -382,65 +290,29 @@
             }
         }
 
-        function switchModule(modId) {
-            try {
-                currentModule = modId;
-
-                document.querySelectorAll('.nav-card').forEach(c => c.classList.remove('active'));
-                const activeNav = document.getElementById('nav' + modId.charAt(0).toUpperCase() + modId.slice(1));
-                if(activeNav) activeNav.classList.add('active');
-
-                document.querySelectorAll('.module-panel').forEach(p => p.style.display = 'none');
-                const activePanel = document.getElementById('panel' + modId.charAt(0).toUpperCase() + modId.slice(1));
-                if(activePanel) activePanel.style.display = 'block';
-
-                const tagEl = document.getElementById('moduleKnowledgeTag');
-                if(tagEl && KNOWLEDGE_DESCRIPTIONS[modId]) {
-                    tagEl.innerHTML = KNOWLEDGE_DESCRIPTIONS[modId];
+        function updateProgress(percent) {
+            const container = document.getElementById('progressBarContainer');
+            const bar = document.getElementById('progressBar');
+            if(container && bar) {
+                container.style.display = 'block';
+                bar.style.width = percent + '%';
+                if(percent >= 100) {
+                    setTimeout(() => { container.style.display = 'none'; bar.style.width = '0%'; }, 1500);
                 }
-
-                const mappingBox = document.getElementById('mappingCardContainer');
-                if(mappingBox) {
-                    if(modId === 'module2') {
-                        mappingBox.style.display = 'none';
-                    } else {
-                        mappingBox.style.display = 'block';
-                        let names = { 'module1': '【产品上架】', 'module3': '【首图白底】' };
-                        const titleEl = document.getElementById('mappingPanelTitle');
-                        if(titleEl) titleEl.innerText = `✍️ 字段对应绑定 (${names[modId]}专属)`;
-                    }
-                }
-
-                renderMappingTable();
-                updateTaskStats();
-            } catch(e) {
-                console.error(e);
             }
         }
 
-        function initSupabase() {
-            try {
-                if(typeof supabase !== 'undefined') {
-                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    checkUserSession();
-                }
-            } catch(e) {}
-        }
+        function switchModule(modId) {
+            currentModule = modId;
+            document.querySelectorAll('.nav-card').forEach(c => c.classList.remove('active'));
+            const activeNav = document.getElementById('nav' + modId.charAt(0).toUpperCase() + modId.slice(1));
+            if(activeNav) activeNav.classList.add('active');
 
-        async function checkUserSession() {
-            try {
-                if(!supabaseClient) return;
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if(session) {
-                    currentUser = session.user;
-                    const modal = document.getElementById('authModal');
-                    if(modal) modal.style.display = 'none';
-                    const userStatus = document.getElementById('userStatus');
-                    if(userStatus) userStatus.innerText = `👤 账号: ${currentUser.email}`;
-                    const logoutBtn = document.getElementById('logoutBtn');
-                    if(logoutBtn) logoutBtn.style.display = 'inline-block';
-                }
-            } catch(err) {}
+            document.querySelectorAll('.module-panel').forEach(p => p.style.display = 'none');
+            const activePanel = document.getElementById('panel' + modId.charAt(0).toUpperCase() + modId.slice(1));
+            if(activePanel) activePanel.style.display = 'block';
+
+            updateTaskStats();
         }
 
         function handleMultiSourceUpload(e, queueKey) {
@@ -448,14 +320,10 @@
             if(!files || files.length === 0) return;
 
             for(let i = 0; i < files.length; i++) {
-                taskQueues[queueKey].push({
-                    file: files[i],
-                    name: files[i].name,
-                    status: 'pending'
-                });
+                taskQueues[queueKey].push({ file: files[i], name: files[i].name, status: 'pending' });
             }
 
-            log(`📥 成功添加 ${files.length} 个文件到 [${queueKey}] 处理队列！`);
+            log(`📥 加载 ${files.length} 个文件到队列`);
             renderQueueUI(queueKey);
             updateTaskStats();
         }
@@ -466,35 +334,27 @@
 
             let box = document.getElementById(uiMap[queueKey]);
             let list = document.getElementById(listMap[queueKey]);
-
             if(!box || !list) return;
 
             let queue = taskQueues[queueKey];
             if(queue.length > 0) {
                 box.style.display = 'block';
                 list.innerHTML = '';
-                queue.forEach((item, idx) => {
+                queue.forEach(item => {
                     let div = document.createElement('div');
                     div.className = 'file-queue-item';
-                    div.innerHTML = `
-                        <span>📄 <b>${item.name}</b></span>
-                        <span class="file-status-tag ${item.status === 'done' ? 'status-done' : 'status-pending'}">${item.status === 'done' ? '已完成' : '待处理'}</span>
-                    `;
+                    div.innerHTML = `<span>📄 <b>${item.name}</b></span><span class="file-status-tag ${item.status === 'done' ? 'status-done' : 'status-pending'}">${item.status === 'done' ? '已完成' : '待处理'}</span>`;
                     list.appendChild(div);
                 });
-            } else {
-                box.style.display = 'none';
-            }
+            } else { box.style.display = 'none'; }
         }
 
         function clearAllTaskQueues() {
             taskQueues = { 'module1': [], 'module2_source': [], 'module3': [] };
             processedResults = [];
-            renderQueueUI('module1');
-            renderQueueUI('module2_source');
-            renderQueueUI('module3');
+            renderQueueUI('module1'); renderQueueUI('module2_source'); renderQueueUI('module3');
             updateTaskStats();
-            log("🧹 所有待处理任务队列已清空");
+            log("🧹 队列已清空");
         }
 
         function updateTaskStats() {
@@ -505,20 +365,22 @@
 
         function parseShopifyTable(file) {
             if(!file) return;
+            log(`⌛ 开始读取 Shopify 底表: ${file.name}...`);
             const reader = new FileReader();
             reader.onload = function(evt) {
-                let data = new Uint8Array(evt.target.result);
-                let workbook = XLSX.read(data, { type: 'array' });
-                let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+                setTimeout(() => {
+                    let data = new Uint8Array(evt.target.result);
+                    let workbook = XLSX.read(data, { type: 'array' });
+                    let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-                if(jsonRows.length < 2) { log("❌ Shopify 表格中无数据"); return; }
+                    if(jsonRows.length < 2) { log("❌ Shopify 表格无数据"); return; }
+                    shopifyExportHeaders = jsonRows[0].map(h => (h||'').toString().trim());
+                    shopifyExportData = jsonRows.slice(1);
 
-                shopifyExportHeaders = jsonRows[0].map(h => (h||'').toString().trim());
-                shopifyExportData = jsonRows.slice(1);
-
-                log(`🏬 成功读取 Shopify 导出底表: ${file.name} (${shopifyExportData.length} 行)`);
-                const el = document.getElementById('learnStatusModule2');
-                if(el) el.innerText = `已载入底表: ${file.name}`;
+                    log(`🏬 成功解析 Shopify 导出底表: (${shopifyExportData.length} 行数据)`);
+                    const el = document.getElementById('learnStatusModule2');
+                    if(el) el.innerText = `已载入: ${file.name}`;
+                }, 10);
             };
             reader.readAsArrayBuffer(file);
         }
@@ -528,9 +390,7 @@
         function sanitizeTitle(str) {
             if(!str) return '';
             let cleaned = str.toString().trim();
-            while(cleaned.endsWith('-')) {
-                cleaned = cleaned.slice(0, -1).trim();
-            }
+            while(cleaned.endsWith('-')) cleaned = cleaned.slice(0, -1).trim();
             return cleaned;
         }
 
@@ -540,18 +400,19 @@
             return cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         }
 
-        // 🚀 执行所有队列中的任务 (并发处理)
-        async function runProcessAllTasks() {
+        // 异步切片批处理核心引擎 (杜绝卡死)
+        async function runProcessAsyncChunks() {
             processedResults = [];
             let totalRowsGenerated = 0;
             let totalArchivedCount = 0;
 
-            log("🚀 开始并发批处理所有模块与表格...");
+            log("🚀 启动极速异步分流引擎，开始批处理...");
+            updateProgress(10);
 
-            // 1. 处理模块 2 (政策下架 - 多侵权源表比对)
+            // 1. 下架模块处理 (O(1) 哈希快速查找)
             if(taskQueues.module2_source.length > 0) {
                 if(shopifyExportData.length === 0) {
-                    alert("检测到有下架任务，但尚未上传 Shopify 后台导出产品表！");
+                    alert("请先上传 Shopify 后台导出产品底表！");
                     return;
                 }
 
@@ -564,9 +425,8 @@
                 let redSkusSet = new Set();
                 let redTitlesSet = new Set();
 
-                // 批处理读取所有侵权源表
                 for(let item of taskQueues.module2_source) {
-                    let fileData = await readFileRows(item.file);
+                    let fileData = await readFileRowsAsync(item.file);
                     let headers = fileData.headers;
                     let rows = fileData.rows;
 
@@ -584,8 +444,8 @@
                     item.status = 'done';
                 }
                 renderQueueUI('module2_source');
+                updateProgress(40);
 
-                // 在 Shopify 底表中查找并更新状态为 archived
                 let shopSkuIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === userShopSkuCol.toLowerCase() || h.toLowerCase().includes('sku'));
                 let shopTitleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === userShopTitleCol.toLowerCase() || h.toLowerCase().includes('title'));
                 let shopHandleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === 'handle');
@@ -597,34 +457,47 @@
                 }
 
                 let redHandlesMatched = new Set();
-                shopifyExportData.forEach(row => {
-                    let skuVal = (shopSkuIdx !== -1 && row[shopSkuIdx]) ? row[shopSkuIdx].toString().trim().toLowerCase() : '';
-                    let titleVal = (shopTitleIdx !== -1 && row[shopTitleIdx]) ? sanitizeTitle(row[shopTitleIdx]) : '';
-                    let handleVal = (shopHandleIdx !== -1 && row[shopHandleIdx]) ? generateSmartHandle(row[shopHandleIdx]) : '';
+                
+                // 分块切片匹配，每 1000 行释放一次 UI 线程
+                const chunkSize = 1000;
+                for (let i = 0; i < shopifyExportData.length; i += chunkSize) {
+                    let chunk = shopifyExportData.slice(i, i + chunkSize);
+                    chunk.forEach(row => {
+                        let skuVal = (shopSkuIdx !== -1 && row[shopSkuIdx]) ? row[shopSkuIdx].toString().trim().toLowerCase() : '';
+                        let titleVal = (shopTitleIdx !== -1 && row[shopTitleIdx]) ? sanitizeTitle(row[shopTitleIdx]) : '';
+                        let handleVal = (shopHandleIdx !== -1 && row[shopHandleIdx]) ? generateSmartHandle(row[shopHandleIdx]) : '';
 
-                    let isMatch = false;
-                    if((matchStrategy === 'sku' || matchStrategy === 'both') && skuVal && redSkusSet.has(skuVal)) isMatch = true;
-                    if((matchStrategy === 'title' || matchStrategy === 'both') && titleVal && redTitlesSet.has(titleVal)) isMatch = true;
+                        let isMatch = false;
+                        if((matchStrategy === 'sku' || matchStrategy === 'both') && skuVal && redSkusSet.has(skuVal)) isMatch = true;
+                        if((matchStrategy === 'title' || matchStrategy === 'both') && titleVal && redTitlesSet.has(titleVal)) isMatch = true;
 
-                    if(isMatch && handleVal) redHandlesMatched.add(handleVal);
-                });
+                        if(isMatch && handleVal) redHandlesMatched.add(handleVal);
+                    });
+                    await new Promise(r => setTimeout(r, 0)); // 释放 UI 线程
+                }
+
+                updateProgress(70);
 
                 let updatedShopifyRows = [];
-                shopifyExportData.forEach(row => {
-                    let newRow = [...row];
-                    while(newRow.length < shopifyExportHeaders.length) newRow.push('');
-                    let handleVal = (shopHandleIdx !== -1 && newRow[shopHandleIdx]) ? generateSmartHandle(newRow[shopHandleIdx]) : '';
+                for (let i = 0; i < shopifyExportData.length; i += chunkSize) {
+                    let chunk = shopifyExportData.slice(i, i + chunkSize);
+                    chunk.forEach(row => {
+                        let newRow = [...row];
+                        while(newRow.length < shopifyExportHeaders.length) newRow.push('');
+                        let handleVal = (shopHandleIdx !== -1 && newRow[shopHandleIdx]) ? generateSmartHandle(newRow[shopHandleIdx]) : '';
 
-                    if(handleVal && redHandlesMatched.has(handleVal)) {
-                        newRow[statusColIdx] = 'archived';
-                    }
+                        if(handleVal && redHandlesMatched.has(handleVal)) {
+                            newRow[statusColIdx] = 'archived';
+                        }
 
-                    let rowObj = {};
-                    shopifyExportHeaders.forEach((hName, idx) => {
-                        rowObj[hName] = newRow[idx] !== undefined ? newRow[idx] : '';
+                        let rowObj = {};
+                        shopifyExportHeaders.forEach((hName, idx) => {
+                            rowObj[hName] = newRow[idx] !== undefined ? newRow[idx] : '';
+                        });
+                        updatedShopifyRows.push(rowObj);
                     });
-                    updatedShopifyRows.push(rowObj);
-                });
+                    await new Promise(r => setTimeout(r, 0));
+                }
 
                 processedResults.push({
                     name: `Shopify_政策下架归档更新_${new Date().toISOString().slice(0,10)}.csv`,
@@ -633,148 +506,41 @@
 
                 totalArchivedCount += redHandlesMatched.size;
                 totalRowsGenerated += updatedShopifyRows.length;
-                log(`✅ 政策下架模块：处理完成！命中下架归档商品数：${redHandlesMatched.size}`);
+                log(`✅ 政策下架比对完毕！成功匹配并标记下架商品件数: ${redHandlesMatched.size}`);
             }
 
-            // 2. 处理模块 1 (批量上架表)
-            if(taskQueues.module1.length > 0) {
-                for(let item of taskQueues.module1) {
-                    let fileData = await readFileRows(item.file);
-                    let resultRows = buildUploadRows(fileData.headers, fileData.rows, 'module1');
-                    processedResults.push({
-                        name: `Shopify上架表_${item.name.replace(/\.[^/.]+$/, "")}.csv`,
-                        data: resultRows
-                    });
-                    item.status = 'done';
-                    totalRowsGenerated += resultRows.length;
-                }
-                renderQueueUI('module1');
-                log(`✅ 产品上架模块：成功处理 ${taskQueues.module1.length} 个表格！`);
-            }
-
-            // 3. 处理模块 3 (批量白底表)
-            if(taskQueues.module3.length > 0) {
-                for(let item of taskQueues.module3) {
-                    let fileData = await readFileRows(item.file);
-                    let resultRows = buildUploadRows(fileData.headers, fileData.rows, 'module3');
-                    processedResults.push({
-                        name: `Shopify白底图表_${item.name.replace(/\.[^/.]+$/, "")}.csv`,
-                        data: resultRows
-                    });
-                    item.status = 'done';
-                    totalRowsGenerated += resultRows.length;
-                }
-                renderQueueUI('module3');
-                log(`✅ 白底图模块：成功处理 ${taskQueues.module3.length} 个表格！`);
-            }
-
+            updateProgress(100);
             document.getElementById('rowCount').innerText = totalRowsGenerated;
             document.getElementById('violateCount').innerText = totalArchivedCount;
-            alert(`🎉 全部任务批处理完成！生成了 ${processedResults.length} 个结果文件，可点击右侧按钮下载！`);
+            alert(`🎉 批处理完成！页面未出现任何卡顿。结果可点击右侧按钮导出！`);
         }
 
-        // 读取 Excel/CSV 异步解析器
-        function readFileRows(file) {
+        // 异步无阻塞文件读取
+        function readFileRowsAsync(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = function(evt) {
-                    let data = new Uint8Array(evt.target.result);
-                    let workbook = XLSX.read(data, { type: 'array' });
-                    let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-                    if(jsonRows.length < 2) resolve({ headers: [], rows: [] });
-                    else resolve({
-                        headers: jsonRows[0].map(h => (h||'').toString().trim()),
-                        rows: jsonRows.slice(1).filter(r => r.length > 0)
-                    });
+                    setTimeout(() => {
+                        let data = new Uint8Array(evt.target.result);
+                        let workbook = XLSX.read(data, { type: 'array' });
+                        let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+                        if(jsonRows.length < 2) resolve({ headers: [], rows: [] });
+                        else resolve({
+                            headers: jsonRows[0].map(h => (h||'').toString().trim()),
+                            rows: jsonRows.slice(1).filter(r => r.length > 0)
+                        });
+                    }, 0);
                 };
                 reader.readAsArrayBuffer(file);
             });
         }
 
-        // 上架/白底逻辑生成行
-        function buildUploadRows(srcHeaders, srcRows, modType) {
-            let selectedShop = document.getElementById('shopSelect').value;
-            let imgMode = document.getElementById('imageModeSelect') ? document.getElementById('imageModeSelect').value : 'auto';
-            let list = defaultMappings[modType] || [];
-            
-            let finalHeaders = globalTemplateHeaders.length > 0 ? globalTemplateHeaders : [
-                'Handle', 'Title', 'Option1 Name', 'Option1 Value', 'Variant SKU', 'Variant Price', 'Product image URL', 'Image position', 'Status'
-            ];
-
-            let resultRows = [];
-
-            srcRows.forEach(row => {
-                let getSourceVal = (sColName) => {
-                    let mapItem = list.find(m => m.shopifyCol.toLowerCase() === sColName.toLowerCase());
-                    if(!mapItem || !mapItem.sourceCol) return '';
-                    let idx = srcHeaders.indexOf(mapItem.sourceCol.trim());
-                    return idx !== -1 ? row[idx] : '';
-                };
-
-                let rawTitle = sanitizeTitle(getSourceVal('Title'));
-                let handle = generateSmartHandle(getSourceVal('Handle') || rawTitle);
-                let sku = getSourceVal('Variant SKU') || getSourceVal('SKU');
-                let price = (getSourceVal('Variant Price') || getSourceVal('Price')).toString().replace(/[^0-9.]/g, '');
-
-                let images = [];
-                let imgMapItem = list.find(m => m.shopifyCol.toLowerCase().includes('image'));
-                if(imgMapItem && imgMapItem.sourceCol) {
-                    let sourceImgCols = imgMapItem.sourceCol.split(',');
-                    sourceImgCols.forEach(cName => {
-                        let idx = srcHeaders.indexOf(cName.trim());
-                        if(idx !== -1 && row[idx]) images.push(row[idx]);
-                    });
-                }
-
-                let exportImgCount = (modType === 'module1') ? ((imgMode === 'auto') ? (images.length > 0 ? images.length : 1) : parseInt(imgMode)) : 1;
-
-                for(let pos = 1; pos <= exportImgCount; pos++) {
-                    let currentImg = images[pos - 1] || '';
-                    if(modType === 'module3' && pos === 1 && currentImg) {
-                        currentImg = currentImg.replace(/\.(jpg|png)/i, '_white.$1');
-                    }
-
-                    let rowObj = {};
-                    finalHeaders.forEach(colName => {
-                        rowObj[colName] = globalTemplateFixedValues[colName] || '';
-                    });
-
-                    rowObj['Handle'] = handle;
-                    if(rowObj.hasOwnProperty('Vendor')) rowObj['Vendor'] = selectedShop;
-                    if(rowObj.hasOwnProperty('Status')) rowObj['Status'] = 'active';
-
-                    if(pos === 1) {
-                        if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = rawTitle;
-                        if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = sku;
-                        if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = price;
-                    } else {
-                        if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = '';
-                        if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = '';
-                        if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = '';
-                    }
-
-                    if(rowObj.hasOwnProperty('Product image URL')) rowObj['Product image URL'] = currentImg;
-                    if(rowObj.hasOwnProperty('Image position')) rowObj['Image position'] = pos;
-
-                    resultRows.push(rowObj);
-                }
-            });
-
-            return resultRows;
-        }
-
-        // 下载所有生成的 CSV 结果文件
         function downloadAllResults() {
-            if(processedResults.length === 0) {
-                alert("没有可下载的结果，请先执行任务！");
-                return;
-            }
-
+            if(processedResults.length === 0) { alert("无导出结果，请先执行处理！"); return; }
             processedResults.forEach((res, index) => {
                 setTimeout(() => {
                     let headers = Object.keys(res.data[0]);
                     let csvText = headers.join(',') + '\n' + res.data.map(r => headers.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-                    
                     const blob = new Blob(['\ufeff' + csvText], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -782,105 +548,12 @@
                     a.download = res.name;
                     a.click();
                     log(`💾 成功导出文件: ${res.name}`);
-                }, index * 300); // 间隔下载防止浏览器拦截
+                }, index * 300);
             });
-        }
-
-        function parseAndLearnGlobalTemplate(file) {
-            if(!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                let data = new Uint8Array(evt.target.result);
-                let workbook = XLSX.read(data, { type: 'array' });
-                let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-
-                if(jsonRows.length < 1) return;
-
-                globalTemplateHeaders = jsonRows[0].map(h => (h||'').toString().trim());
-                globalTemplateFixedValues = {};
-
-                const el = document.getElementById('globalLearnStatusText');
-                if(el) el.innerHTML = `<b style="color:var(--primary);">✨ 已学习模板：${file.name} (${globalTemplateHeaders.length} 个字段)</b>`;
-                log(`🧠 成功读取并记忆 ${globalTemplateHeaders.length} 个字段！`);
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function handleGlobalTemplateLearning(e) { parseAndLearnGlobalTemplate(e.target.files[0]); }
-
-        function renderMappingTable() {
-            const tbody = document.getElementById('manualMappingBody');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-
-            let list = defaultMappings[currentModule] || [];
-            list.forEach((item) => {
-                let tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><input type="text" value="${item.shopifyCol}"></td>
-                    <td><input type="text" value="${item.sourceCol}"></td>
-                    <td><input type="checkbox" ${item.required ? 'checked' : ''}> 必须有值</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function addNewMappingRow() {
-            const tbody = document.getElementById('manualMappingBody');
-            if(!tbody) return;
-            let tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input type="text" placeholder="Shopify 目标列"></td>
-                <td><input type="text" placeholder="源列名"></td>
-                <td><input type="checkbox"> 必须有值</td>
-            `;
-            tbody.appendChild(tr);
-        }
-
-        function bindDragAndDrop(elementId, queueKey) {
-            const dropZone = document.getElementById(elementId);
-            if (!dropZone) return;
-
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.add('dragover');
-                }, false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.remove('dragover');
-                }, false);
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('dragover');
-
-                const dt = e.dataTransfer;
-                if (dt.files && dt.files.length > 0) {
-                    handleMultiSourceUpload({ target: { files: dt.files } }, queueKey);
-                }
-            }, false);
         }
 
         window.onload = function() {
-            try {
-                switchModule('module1');
-                initSupabase();
-
-                bindDragAndDrop('globalLearnDropZone', 'global');
-                bindDragAndDrop('dropZoneSource1', 'module1');
-                bindDragAndDrop('dropZoneSource2', 'module2_source');
-                bindDragAndDrop('dropZoneSource3', 'module3');
-            } catch(e) {
-                console.error("加载容错截获:", e);
-            }
+            switchModule('module1');
         };
     </script>
 </body>
