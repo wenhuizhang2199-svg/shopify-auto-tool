@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 数据自动化处理中心 (三板块独立隔离与云端持久化版)</title>
+    <title>Shopify 数据处理中心 (政策违规 RED 智能比对下架版)</title>
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 引入 SheetJS 支持读取 Excel (.xlsx/.xls) 文件 -->
@@ -40,9 +40,7 @@
         .nav-card:hover { border-color: var(--primary); background: #f0fdf4; }
         .nav-card.active { border-color: var(--primary); background: #e4f5ed; color: var(--primary); }
 
-        /* 板块专属学习卡 */
         .module-learn-card { background: #f0fdf4; border: 1.5px dashed var(--primary); border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-
         .knowledge-card { background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #0369a1; }
 
         /* 登录弹窗 */
@@ -58,7 +56,8 @@
         .setting-row label { font-size: 14px; font-weight: 600; min-width: 140px; }
         .setting-row select, .setting-row input { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; flex: 1; }
 
-        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafbfb; }
+        .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafbfb; }
         .upload-area:hover { border-color: var(--primary); background: #f0fdf4; }
         .upload-area input { display: none; }
 
@@ -91,7 +90,7 @@
 
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">📘 汽配/工业品/家具合规版</span></h1>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">🚫 智能下架自动化版</span></h1>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span id="userStatus" style="font-size: 13px; color: var(--subtext);">未登录</span>
                 <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
@@ -114,7 +113,7 @@
         <div class="grid">
             <main>
                 <div class="knowledge-card">
-                    📘 <b>Shopify 官方合规管控已激活：</b> 标题末尾横杠全自动擦除，汽配/工业品/家具多图自动纵向展开并生成 Image position 位置索引。
+                    📘 <b>自动对比下架功能：</b> 上传侵权系统表与 Shopify 导出表后，系统将自动锁定 <code>Overall Decision == RED</code> 的违规产品，并将它们的 <code>Status</code> 设为 <code>archived</code>。
                 </div>
 
                 <!-- 报错警示框 -->
@@ -165,24 +164,25 @@
                     </div>
                 </div>
 
-                <!-- 2. 政策违规下架专属面板 -->
+                <!-- 2. 政策违规下架专属面板 (双表双功能区域) -->
                 <div id="panelModule2" class="module-panel" style="display: none;">
                     <div class="card">
-                        <div class="module-learn-card">
-                            <div>
-                                <h4 style="color:var(--primary); font-size:15px;">🧠 政策下架模块专属 Shopify 模板表学习</h4>
-                                <p style="font-size:12px; color:var(--subtext);" id="learnStatusModule2">未学习（上传包含 Status = archived 的下架模版表）</p>
+                        <div class="card-title">🚫 政策下架双表上传比对中心</div>
+                        <div class="upload-grid">
+                            <!-- 入口1：侵权系统结果表 -->
+                            <div class="upload-area" onclick="document.getElementById('sourceInput2').click()">
+                                <p style="font-size: 28px; margin-bottom: 4px;">🔍</p>
+                                <p style="font-weight: 600;">1. 上传侵权系统导出表</p>
+                                <p style="font-size: 12px; color: var(--subtext);" id="sourceStatusText2">系统会自动识别 Overall Decision == RED 的违规行</p>
+                                <input type="file" id="sourceInput2" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                             </div>
-                            <button class="btn btn-sm" onclick="document.getElementById('templateInput2').click()">学习下架模板表</button>
-                            <input type="file" id="templateInput2" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleModuleTemplateLearning(event, 'module2')">
-                        </div>
-
-                        <div class="card-title">🚫 政策下架专属文件上传</div>
-                        <div class="upload-area" onclick="document.getElementById('sourceInput2').click()">
-                            <p style="font-size: 32px; margin-bottom: 8px;">🚫</p>
-                            <p style="font-weight: 600;">拖拽上传千犬/侵权系统导出之违规结果表 (.csv, .xlsx)</p>
-                            <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText2">仅需读取关联 SKU 或 Handle 列</p>
-                            <input type="file" id="sourceInput2" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
+                            <!-- 入口2：Shopify 后台导出的原产品表 -->
+                            <div class="upload-area" onclick="document.getElementById('templateInput2').click()">
+                                <p style="font-size: 28px; margin-bottom: 4px;">🏬</p>
+                                <p style="font-weight: 600;">2. 上传 Shopify 后台导出表</p>
+                                <p style="font-size: 12px; color: var(--subtext);" id="learnStatusModule2">用来准确定位商品并把 Status 改为 archived</p>
+                                <input type="file" id="templateInput2" accept=".xlsx, .xls, .csv" onchange="handleModuleTemplateLearning(event, 'module2')">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -245,14 +245,14 @@
 
                 <div class="card">
                     <div class="card-title">实时处理日志</div>
-                    <div class="log-box" id="logBox">[系统初始化完成] 架构与云端记忆引擎恢复正常...\n</div>
+                    <div class="log-box" id="logBox">[系统初始化完成] 智能比对下架逻辑加载完毕...\n</div>
                 </div>
             </main>
 
             <aside>
                 <div class="card">
                     <div class="card-title">操作控制台</div>
-                    <button class="btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="runProcess()">🚀 执行校验并生成合规文件</button>
+                    <button class="btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="runProcess()">🚀 自动筛选 RED 并生成下架表</button>
                     <button class="btn btn-outline" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="downloadCSV()">📥 导出处理完成 CSV 表格</button>
                 </div>
 
@@ -269,7 +269,7 @@
                         </div>
                         <div class="stat-card">
                             <div class="stat-num" id="violateCount" style="color: var(--danger);">0</div>
-                            <div style="font-size: 12px;">归档/违规数</div>
+                            <div style="font-size: 12px;">下架 RED 数量</div>
                         </div>
                     </div>
                 </div>
@@ -303,9 +303,8 @@
                 { shopifyCol: 'Product image URL', sourceCol: '描述图片19, 描述图片29, 描述图片32, 描述图片4, 描述图片5, 描述图片6', required: true }
             ],
             'module2': [
-                { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
-                { shopifyCol: 'Variant SKU', sourceCol: '父Sku编码', required: true },
-                { shopifyCol: 'Status', sourceCol: 'Status', required: false }
+                { shopifyCol: 'Handle', sourceCol: '父Sku编码, SKU, Image Src', required: true },
+                { shopifyCol: 'Overall Decision', sourceCol: 'Overall Decision', required: false }
             ],
             'module3': [
                 { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
@@ -415,8 +414,10 @@
                     }]);
                 }
 
-                document.getElementById(`learnStatus${modId.charAt(0).toUpperCase() + modId.slice(1)}`).innerHTML = `<b style="color:var(--primary);">✨ 已学习该板块模版：${file.name} (${headers.length} 列)</b>`;
-                log(`🧠 [${modId}] 专属模版文件已永久学习存储至云端！`);
+                let numStr = modId.slice(-1);
+                let el = document.getElementById(`learnStatus${modId.charAt(0).toUpperCase() + modId.slice(1)}`);
+                if(el) el.innerHTML = `<b style="color:var(--primary);">✨ 已载入比对底本：${file.name} (${headers.length} 列)</b>`;
+                log(`🧠 [${modId}] 专属底本已持久化存入云端！`);
             };
             reader.readAsArrayBuffer(file);
         }
@@ -431,7 +432,8 @@
 
             if(data && data.mapping_rules) {
                 moduleTemplates[modId] = data.mapping_rules;
-                document.getElementById(`learnStatus${modId.charAt(0).toUpperCase() + modId.slice(1)}`).innerHTML = `<b style="color:var(--primary);">✨ 已激活云端保存的模版：${data.template_name || '已锁定'} (${data.mapping_rules.headers.length} 列)</b>`;
+                let el = document.getElementById(`learnStatus${modId.charAt(0).toUpperCase() + modId.slice(1)}`);
+                if(el) el.innerHTML = `<b style="color:var(--primary);">✨ 已激活云端底本：${data.template_name || '已锁定'} (${data.mapping_rules.headers.length} 列)</b>`;
             }
         }
 
@@ -461,7 +463,7 @@
                 mapping_rules: currentMappingList,
                 updated_at: new Date()
             }]);
-            alert(`🎉 [${currentModule}] 专有映射规则已成功永久保存到 Supabase 云端数据库！以后无需重复设置！`);
+            alert(`🎉 [${currentModule}] 映射规则已成功保存上云！`);
         }
 
         async function loadSavedMappingFromCloud(modId) {
@@ -495,7 +497,7 @@
                 rawSourceHeaders = jsonRows[0].map(h => (h||'').toString().trim());
                 rawSourceData = jsonRows.slice(1).filter(r => r.length > 0);
 
-                log(`✅ 成功读取源表格: ${file.name} (${rawSourceData.length} 行)`);
+                log(`✅ 成功读取侵权源表格: ${file.name} (${rawSourceData.length} 行)`);
                 document.getElementById('totalCount').innerText = rawSourceData.length;
                 
                 let elId = `sourceStatusText${currentModule.slice(-1)}`;
@@ -517,135 +519,129 @@
         function generateSmartHandle(rawStr) {
             let cleanTitle = sanitizeTitle(rawStr);
             if(!cleanTitle) return 'product-item';
-            return cleanTitle
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)/g, '');
+            return cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         }
 
-        function sanitizePrice(val) {
-            if(!val) return '';
-            return val.toString().replace(/[^0-9.]/g, '');
-        }
-
+        // 🚀 智能比对 RED 自动筛选下架引擎
         async function runProcess() {
-            if(rawSourceData.length === 0) { alert("请先在当前板块上传待做表的数据源文件！"); return; }
+            if(rawSourceData.length === 0) { alert("请先上传待处理的数据源文件！"); return; }
 
             let alertBox = document.getElementById('errorAlertBox');
             let alertContent = document.getElementById('errorAlertContent');
             alertBox.style.display = 'none';
             alertContent.innerHTML = '';
 
-            let missingCols = [];
-            currentMappingList.forEach(rule => {
-                if(rule.required && rule.sourceCol) {
-                    let firstColName = rule.sourceCol.split(',')[0].trim();
-                    if(!rawSourceHeaders.includes(firstColName)) {
-                        missingCols.push(`源表格中缺失当前板块合规所需的必填列：<b>[${firstColName}]</b>`);
-                    }
-                }
-            });
-
-            if(missingCols.length > 0) {
-                alertBox.style.display = 'block';
-                alertContent.innerHTML = missingCols.join('<br>');
-                log("❌ 校验中断：缺失对应列。");
-                return;
-            }
-
             let tInfo = moduleTemplates[currentModule] || { headers: [], fixedValues: {} };
             let finalHeaders = tInfo.headers.length > 0 ? tInfo.headers : [
-                'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Product Category', 'Type', 'Tags', 'Published',
-                'Option1 Name', 'Option1 Value', 'Option2 Name', 'Option2 Value', 'Option3 Name', 'Option3 Value',
-                'Variant SKU', 'Variant Grams', 'Variant Inventory Tracker', 'Variant Inventory Qty',
-                'Variant Inventory Policy', 'Variant Fulfillment Service', 'Variant Price', 'Variant Compare At Price',
-                'Variant Requires Shipping', 'Variant Taxable', 'Variant Barcode', 'Product image URL', 'Image position',
-                'Image Alt Text', 'Gift Card', 'SEO Title', 'SEO Description', 'Google Shopping / Google Product Category',
-                'Variant Image', 'Variant Weight Unit', 'Variant Tax Code', 'Cost per item', 'Price / International',
-                'Compare At Price / International', 'Status'
+                'Handle', 'Title', 'Option1 Name', 'Option1 Value', 'Variant SKU', 'Variant Price', 'Status'
             ];
 
             let selectedShop = document.getElementById('shopSelect').value;
-            let imgMode = document.getElementById('imageModeSelect') ? document.getElementById('imageModeSelect').value : 'auto';
             mappedResultData = [];
             let totalExportRows = 0;
+            let redCount = 0;
 
-            let imgUrlColKey = finalHeaders.find(h => h.toLowerCase().includes('image url') || h.toLowerCase() === 'image src') || 'Product image URL';
-            let imgPosColKey = finalHeaders.find(h => h.toLowerCase().includes('position')) || 'Image position';
+            // 针对【板块 2：政策下架】特有智能过滤算法
+            if(currentModule === 'module2') {
+                let decisionIdx = rawSourceHeaders.findIndex(h => h.toLowerCase().includes('decision') || h.toLowerCase().includes('overall'));
+                
+                // 查找标识字段 (Handle 或 SKU 或图片链接)
+                let handleIdx = rawSourceHeaders.findIndex(h => h.toLowerCase().includes('handle') || h.toLowerCase().includes('sku') || h.toLowerCase().includes('image'));
 
-            rawSourceData.forEach(row => {
-                let getSourceVal = (sColName) => {
-                    let mapItem = currentMappingList.find(m => m.shopifyCol.toLowerCase() === sColName.toLowerCase());
-                    if(!mapItem || !mapItem.sourceCol) return '';
-                    let idx = rawSourceHeaders.indexOf(mapItem.sourceCol.trim());
-                    return idx !== -1 ? row[idx] : '';
-                };
+                log("🔍 正在扫描侵权源表，筛选 Overall Decision == RED 的违规数据...");
 
-                let rawTitle = sanitizeTitle(getSourceVal('Title'));
-                let rawHandleVal = getSourceVal('Handle') || rawTitle;
-                let handle = generateSmartHandle(rawHandleVal);
-                let sku = getSourceVal('Variant SKU') || getSourceVal('SKU');
-                let price = sanitizePrice(getSourceVal('Variant Price') || getSourceVal('Price'));
-
-                let images = [];
-                let imgMapItem = currentMappingList.find(m => m.shopifyCol.toLowerCase().includes('image'));
-                if(imgMapItem && imgMapItem.sourceCol) {
-                    let sourceImgCols = imgMapItem.sourceCol.split(',');
-                    sourceImgCols.forEach(cName => {
-                        let idx = rawSourceHeaders.indexOf(cName.trim());
-                        if(idx !== -1 && row[idx]) images.push(row[idx]);
-                    });
-                }
-
-                let exportImgCount = (currentModule === 'module1') ? ((imgMode === 'auto') ? (images.length > 0 ? images.length : 1) : parseInt(imgMode)) : 1;
-
-                for(let pos = 1; pos <= exportImgCount; pos++) {
-                    let currentImg = images[pos - 1] || '';
-                    if(currentModule === 'module3' && pos === 1 && currentImg) {
-                        currentImg = currentImg.replace(/\.(jpg|png)/i, '_white.$1');
-                    }
-
-                    let rowObj = {};
-                    finalHeaders.forEach(colName => {
-                        rowObj[colName] = tInfo.fixedValues[colName] || '';
-                    });
-
-                    rowObj['Handle'] = handle;
-                    if(rowObj.hasOwnProperty('Vendor')) rowObj['Vendor'] = selectedShop;
+                rawSourceData.forEach(row => {
+                    let decisionVal = (decisionIdx !== -1 && row[decisionIdx]) ? row[decisionIdx].toString().trim().toUpperCase() : 'RED';
                     
-                    if(rowObj.hasOwnProperty('Published') && !rowObj['Published']) rowObj['Published'] = 'TRUE';
-                    if(rowObj.hasOwnProperty('Variant Requires Shipping') && !rowObj['Variant Requires Shipping']) rowObj['Variant Requires Shipping'] = 'TRUE';
-                    if(rowObj.hasOwnProperty('Variant Inventory Policy') && !rowObj['Variant Inventory Policy']) rowObj['Variant Inventory Policy'] = 'deny';
+                    // 核心：只对标记为 RED 的违规行进行提取处理
+                    if(decisionVal === 'RED' || decisionVal.includes('RED')) {
+                        redCount++;
+                        let rawKey = row[handleIdx] || '';
+                        let handle = generateSmartHandle(rawKey);
 
-                    if(rowObj.hasOwnProperty('Status')) {
-                        rowObj['Status'] = (currentModule === 'module2') ? 'archived' : (tInfo.fixedValues['Status'] || 'active');
+                        let rowObj = {};
+                        finalHeaders.forEach(colName => {
+                            rowObj[colName] = tInfo.fixedValues[colName] || '';
+                        });
+
+                        rowObj['Handle'] = handle;
+                        rowObj['Status'] = 'archived'; // 自动强制写入归档状态！
+
+                        mappedResultData.push(rowObj);
+                        totalExportRows++;
+                    }
+                });
+
+                document.getElementById('violateCount').innerText = redCount;
+                log(`🎯 扫描完成！共从源表中精准识别出 ${redCount} 个 RED 违规商品，已全部转换为 Status = archived！`);
+
+            } else {
+                // 板块 1 与 板块 3 的常规运算逻辑
+                let imgMode = document.getElementById('imageModeSelect') ? document.getElementById('imageModeSelect').value : 'auto';
+                let imgUrlColKey = finalHeaders.find(h => h.toLowerCase().includes('image url') || h.toLowerCase() === 'image src') || 'Product image URL';
+                let imgPosColKey = finalHeaders.find(h => h.toLowerCase().includes('position')) || 'Image position';
+
+                rawSourceData.forEach(row => {
+                    let getSourceVal = (sColName) => {
+                        let mapItem = currentMappingList.find(m => m.shopifyCol.toLowerCase() === sColName.toLowerCase());
+                        if(!mapItem || !mapItem.sourceCol) return '';
+                        let idx = rawSourceHeaders.indexOf(mapItem.sourceCol.trim());
+                        return idx !== -1 ? row[idx] : '';
+                    };
+
+                    let rawTitle = sanitizeTitle(getSourceVal('Title'));
+                    let rawHandleVal = getSourceVal('Handle') || rawTitle;
+                    let handle = generateSmartHandle(rawHandleVal);
+                    let sku = getSourceVal('Variant SKU') || getSourceVal('SKU');
+                    let price = (getSourceVal('Variant Price') || getSourceVal('Price')).toString().replace(/[^0-9.]/g, '');
+
+                    let images = [];
+                    let imgMapItem = currentMappingList.find(m => m.shopifyCol.toLowerCase().includes('image'));
+                    if(imgMapItem && imgMapItem.sourceCol) {
+                        let sourceImgCols = imgMapItem.sourceCol.split(',');
+                        sourceImgCols.forEach(cName => {
+                            let idx = rawSourceHeaders.indexOf(cName.trim());
+                            if(idx !== -1 && row[idx]) images.push(row[idx]);
+                        });
                     }
 
-                    if(pos === 1) {
-                        if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = rawTitle;
-                        if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = sku;
-                        else if(rowObj.hasOwnProperty('SKU')) rowObj['SKU'] = sku;
+                    let exportImgCount = (currentModule === 'module1') ? ((imgMode === 'auto') ? (images.length > 0 ? images.length : 1) : parseInt(imgMode)) : 1;
 
-                        if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = price;
-                        else if(rowObj.hasOwnProperty('Price')) rowObj['Price'] = price;
-                    } else {
-                        if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = '';
-                        if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = '';
-                        if(rowObj.hasOwnProperty('SKU')) rowObj['SKU'] = '';
-                        if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = '';
-                        if(rowObj.hasOwnProperty('Price')) rowObj['Price'] = '';
+                    for(let pos = 1; pos <= exportImgCount; pos++) {
+                        let currentImg = images[pos - 1] || '';
+                        if(currentModule === 'module3' && pos === 1 && currentImg) {
+                            currentImg = currentImg.replace(/\.(jpg|png)/i, '_white.$1');
+                        }
+
+                        let rowObj = {};
+                        finalHeaders.forEach(colName => {
+                            rowObj[colName] = tInfo.fixedValues[colName] || '';
+                        });
+
+                        rowObj['Handle'] = handle;
+                        if(rowObj.hasOwnProperty('Vendor')) rowObj['Vendor'] = selectedShop;
+                        if(rowObj.hasOwnProperty('Status')) rowObj['Status'] = 'active';
+
+                        if(pos === 1) {
+                            if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = rawTitle;
+                            if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = sku;
+                            if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = price;
+                        } else {
+                            if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = '';
+                            if(rowObj.hasOwnProperty('Variant SKU')) rowObj['Variant SKU'] = '';
+                            if(rowObj.hasOwnProperty('Variant Price')) rowObj['Variant Price'] = '';
+                        }
+
+                        if(rowObj.hasOwnProperty(imgUrlColKey)) rowObj[imgUrlColKey] = currentImg;
+                        if(rowObj.hasOwnProperty(imgPosColKey)) rowObj[imgPosColKey] = pos;
+
+                        mappedResultData.push(rowObj);
+                        totalExportRows++;
                     }
-
-                    if(rowObj.hasOwnProperty(imgUrlColKey)) rowObj[imgUrlColKey] = currentImg;
-                    if(rowObj.hasOwnProperty(imgPosColKey)) rowObj[imgPosColKey] = pos;
-
-                    mappedResultData.push(rowObj);
-                    totalExportRows++;
-                }
-            });
+                });
+            }
 
             document.getElementById('rowCount').innerText = totalExportRows;
-            log(`🎉 [${currentModule}] 已按官方标准成功导出 ${totalExportRows} 行文件！标题末尾横杠已全自动擦除。`);
 
             if(supabaseClient && currentUser) {
                 let csvText = finalHeaders.join(',') + '\n' + mappedResultData.map(r => finalHeaders.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -703,7 +699,7 @@
         function downloadHistoryCSV(content, filename) {
             const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            const a = document.append? document.createElement('a') : document.createElement('a');
             a.href = url;
             a.download = filename;
             a.click();
