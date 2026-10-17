@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 数据自动化处理中心 (全功能完整版)</title>
+    <title>Shopify 数据自动化处理中心 (强登录控制版)</title>
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 引入 SheetJS 支持读取 Excel (.xlsx/.xls) 文件 -->
@@ -22,7 +22,10 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg); color: var(--text); padding: 24px; line-height: 1.5; }
-        .container { max-width: 1280px; margin: 0 auto; }
+        .container { max-width: 1280px; margin: 0 auto; transition: opacity 0.3s ease; }
+
+        /* 未登录时界面锁定模糊效果 */
+        .container.app-locked { opacity: 0.3; pointer-events: none; filter: blur(2px); }
 
         header { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 20px 24px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; }
         h1 { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
@@ -35,23 +38,20 @@
         .btn-sm { padding: 4px 8px; font-size: 12px; }
         .btn-danger { background: var(--danger); }
 
-        /* 置顶全局学习卡 */
-        .global-learn-card { background: #f0fdf4; border: 2px dashed var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 24px; transition: 0.2s; }
-        .global-learn-card.dragover { background: #d1fae5; border-color: #047857; border-style: solid; }
+        /* 强制登录遮罩弹窗 */
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .auth-card { background: var(--surface); padding: 32px; border-radius: 12px; width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid var(--border); }
+        .auth-input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+
+        .global-learn-card { background: #f0fdf4; border: 2px dashed var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
         .global-learn-header { display: flex; justify-content: space-between; align-items: center; }
 
-        /* 主功能导航切换卡 */
         .module-nav { display: flex; gap: 12px; margin-bottom: 24px; }
         .nav-card { flex: 1; background: var(--surface); border: 2px solid var(--border); padding: 16px; border-radius: 10px; cursor: pointer; transition: 0.2s; text-align: center; font-weight: 600; user-select: none; }
         .nav-card:hover { border-color: var(--primary); background: #f0fdf4; }
         .nav-card.active { border-color: var(--primary); background: #e4f5ed; color: var(--primary); }
 
         .knowledge-card { background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #0369a1; }
-
-        /* 登录弹窗 */
-        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .auth-card { background: var(--surface); padding: 32px; border-radius: 12px; width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .auth-input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
 
         .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
         .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 24px; }
@@ -86,25 +86,26 @@
     </style>
 </head>
 <body>
-    <!-- 登录蒙版 -->
-    <div class="auth-overlay" id="authModal" style="display:none;">
+    <!-- 🔒 强登录控制遮罩弹窗 -->
+    <div class="auth-overlay" id="authModal">
         <div class="auth-card">
-            <h2 style="margin-bottom: 8px; text-align: center;">团队账号登录</h2>
-            <p style="font-size: 13px; color: var(--subtext); margin-bottom: 20px; text-align: center;">登录后加载云端个人历史处理数据</p>
-            <input type="email" id="authEmail" class="auth-input" placeholder="输入邮箱账号">
+            <h2 style="margin-bottom: 8px; text-align: center;">🔐 团队强身份验证</h2>
+            <p style="font-size: 13px; color: var(--subtext); margin-bottom: 20px; text-align: center;">系统已设置强制登录防护，请登录后解锁所有操作</p>
+            <input type="email" id="authEmail" class="auth-input" placeholder="输入团队授权邮箱">
             <input type="password" id="authPassword" class="auth-input" placeholder="输入密码">
             <div style="display: flex; gap: 8px;">
-                <button class="btn" style="flex: 1; justify-content: center;" onclick="handleLogin()">登录系统</button>
+                <button class="btn" style="flex: 1; justify-content: center;" onclick="handleLogin()">登录并解锁系统</button>
                 <button class="btn btn-outline" style="flex: 1; justify-content: center;" onclick="handleSignUp()">注册新账号</button>
             </div>
         </div>
     </div>
 
-    <div class="container">
+    <!-- 主界面（未登录时加上 app-locked 类强行锁定） -->
+    <div class="container app-locked" id="mainAppContainer">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">全功能防卡死版</span></h1>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">强身份验证版</span></h1>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <span id="userStatus" style="font-size: 13px; color: var(--subtext);">系统就绪</span>
+                <span id="userStatus" style="font-size: 13px; color: var(--danger); font-weight:600;">🔒 未登录 (系统已锁定)</span>
                 <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
             </div>
         </header>
@@ -158,7 +159,6 @@
                                 <option value="1">固定 1 张图 (1行/商品)</option>
                                 <option value="2">固定 2 张图 (隔2行/商品)</option>
                                 <option value="3">固定 3 张图 (隔3行/商品)</option>
-                                <option value="4">固定 4 张图 (隔4行/商品)</option>
                             </select>
                         </div>
 
@@ -255,13 +255,13 @@
                     </div>
                 </div>
 
-                <!-- ✍️ 字段对应绑定卡片（补全） -->
+                <!-- ✍️ 字段对应绑定卡片 -->
                 <div class="card" id="mappingCardContainer">
                     <div class="card-title">
                         <span id="mappingPanelTitle">✍️ 字段对应绑定 (当前板块绑定)</span>
                         <div>
                             <button class="btn btn-outline btn-sm" onclick="addNewMappingRow()">➕ 添加映射列</button>
-                            <button class="btn btn-sm" onclick="saveMappingToCloud()">💾 保存规则</button>
+                            <button class="btn btn-sm" onclick="saveMappingToCloud()">💾 保存规则上云</button>
                         </div>
                     </div>
                     <table class="mapping-table">
@@ -276,15 +276,15 @@
                     </table>
                 </div>
 
-                <!-- 📜 历史数据表格（补全） -->
+                <!-- 📜 云端历史数据表格 -->
                 <div class="card">
-                    <div class="card-title">📜 云端历史记录</div>
+                    <div class="card-title">📜 团队云端历史记录</div>
                     <table class="history-table">
                         <thead>
                             <tr><th>导出时间</th><th>记录文件名</th><th>导出件数</th><th>关联店铺</th><th>操作</th></tr>
                         </thead>
                         <tbody id="historyBody">
-                            <tr><td colspan="5" style="text-align: center; color: var(--subtext);">暂无导出记录</td></tr>
+                            <tr><td colspan="5" style="text-align: center; color: var(--subtext);">正在加载云端数据...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -294,7 +294,7 @@
                     <div class="progress-bar-container" id="progressBarContainer">
                         <div class="progress-bar" id="progressBar"></div>
                     </div>
-                    <div class="log-box" id="logBox" style="margin-top:12px;">[系统初始化完成] 极速异步防护引擎就绪...\n</div>
+                    <div class="log-box" id="logBox" style="margin-top:12px;">[系统初始化完成] 等待身份验证解锁...\n</div>
                 </div>
             </main>
 
@@ -363,16 +363,77 @@
             }
         }
 
-        function updateProgress(percent) {
-            const container = document.getElementById('progressBarContainer');
-            const bar = document.getElementById('progressBar');
-            if(container && bar) {
-                container.style.display = 'block';
-                bar.style.width = percent + '%';
-                if(percent >= 100) {
-                    setTimeout(() => { container.style.display = 'none'; bar.style.width = '0%'; }, 1500);
+        // 强设置登录防护锁
+        function initSupabase() {
+            try {
+                if(typeof supabase !== 'undefined') {
+                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    checkUserSession();
+                } else {
+                    showAuthModal(true);
                 }
+            } catch(e) {
+                showAuthModal(true);
             }
+        }
+
+        async function checkUserSession() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if(session) {
+                    currentUser = session.user;
+                    unlockAppUI(currentUser.email);
+                    fetchModuleHistory();
+                } else {
+                    showAuthModal(true);
+                }
+            } catch(e) {
+                showAuthModal(true);
+            }
+        }
+
+        function showAuthModal(show) {
+            const modal = document.getElementById('authModal');
+            const container = document.getElementById('mainAppContainer');
+            if(show) {
+                modal.style.display = 'flex';
+                container.classList.add('app-locked');
+            } else {
+                modal.style.display = 'none';
+                container.classList.remove('app-locked');
+            }
+        }
+
+        function unlockAppUI(email) {
+            showAuthModal(false);
+            document.getElementById('userStatus').innerHTML = `👤 已验证: <b style="color:var(--primary);">${email}</b>`;
+            document.getElementById('logoutBtn').style.display = 'inline-block';
+            log(`🎉 欢迎回来，账号 ${email} 已解锁全套处理中心！`);
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+            if(!email || !password) { alert("请输入邮箱和密码！"); return; }
+            
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if(error) alert("登录失败：" + error.message); 
+            else checkUserSession();
+        }
+
+        async function handleSignUp() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+            if(!email || !password) { alert("请输入注册邮箱和密码！"); return; }
+
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
+            if(error) alert("注册失败：" + error.message); 
+            else alert("注册成功！请直接登录");
+        }
+
+        async function handleLogout() {
+            if(supabaseClient) await supabaseClient.auth.signOut();
+            location.reload();
         }
 
         function switchModule(modId) {
@@ -518,7 +579,7 @@
             return cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         }
 
-        // 统一拖拽防失效绑定函数
+        // 统一拖拽防失效代理
         function initGlobalDragAndDrop() {
             const dropAreas = [
                 { id: 'globalLearnDropZone', callback: (files) => handleGlobalTemplateLearning({ target: { files } }) },
@@ -554,175 +615,53 @@
                     }
                 }, false);
             });
-            log("✨ 拖拽上传代理绑定成功！任何区域均可直接拖拽文件上传。");
         }
 
-        async function runProcessAsyncChunks() {
-            processedResults = [];
-            let totalRowsGenerated = 0;
-            let totalArchivedCount = 0;
+        async function fetchModuleHistory() {
+            if(!supabaseClient || !currentUser) return;
+            try {
+                const { data } = await supabaseClient
+                    .from('user_history_records')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(5);
 
-            log("🚀 启动极速分流引擎，开始批处理...");
-            updateProgress(10);
+                const tbody = document.getElementById('historyBody');
+                if(!tbody) return;
+                tbody.innerHTML = '';
 
-            if(taskQueues.module2_source.length > 0) {
-                if(shopifyExportData.length === 0) {
-                    alert("请先上传 Shopify 后台导出产品底表！");
+                if(!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--subtext);">云端暂无导出历史记录</td></tr>';
                     return;
                 }
 
-                let matchStrategy = document.getElementById('matchStrategySelect').value;
-                let userSrcSkuCol = document.getElementById('srcSkuColName').value.trim();
-                let userSrcTitleCol = document.getElementById('srcTitleColName').value.trim();
-                let userShopSkuCol = document.getElementById('shopSkuColName').value.trim();
-                let userShopTitleCol = document.getElementById('shopTitleColName').value.trim();
-
-                let redSkusSet = new Set();
-                let redTitlesSet = new Set();
-
-                for(let item of taskQueues.module2_source) {
-                    let fileData = await readFileRowsAsync(item.file);
-                    let headers = fileData.headers;
-                    let rows = fileData.rows;
-
-                    let decisionIdx = headers.findIndex(h => h.toLowerCase().includes('decision') || h.toLowerCase().includes('overall'));
-                    let srcSkuIdx = headers.findIndex(h => h.toLowerCase() === userSrcSkuCol.toLowerCase() || h.toLowerCase().includes('sku'));
-                    let srcTitleIdx = headers.findIndex(h => h.toLowerCase() === userSrcTitleCol.toLowerCase() || h.toLowerCase().includes('title'));
-
-                    rows.forEach(r => {
-                        let decisionVal = (decisionIdx !== -1 && r[decisionIdx]) ? r[decisionIdx].toString().trim().toUpperCase() : 'RED';
-                        if(decisionVal === 'RED' || decisionVal.includes('RED') || decisionIdx === -1) {
-                            if(srcSkuIdx !== -1 && r[srcSkuIdx]) redSkusSet.add(r[srcSkuIdx].toString().trim().toLowerCase());
-                            if(srcTitleIdx !== -1 && r[srcTitleIdx]) redTitlesSet.add(sanitizeTitle(r[srcTitleIdx]));
-                        }
-                    });
-                    item.status = 'done';
-                }
-                renderQueueUI('module2_source');
-                updateProgress(40);
-
-                let shopSkuIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === userShopSkuCol.toLowerCase() || h.toLowerCase().includes('sku'));
-                let shopTitleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === userShopTitleCol.toLowerCase() || h.toLowerCase().includes('title'));
-                let shopHandleIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === 'handle');
-                let statusColIdx = shopifyExportHeaders.findIndex(h => h.toLowerCase() === 'status');
-
-                if(statusColIdx === -1) {
-                    shopifyExportHeaders.push('Status');
-                    statusColIdx = shopifyExportHeaders.length - 1;
-                }
-
-                let redHandlesMatched = new Set();
-                const chunkSize = 1000;
-                for (let i = 0; i < shopifyExportData.length; i += chunkSize) {
-                    let chunk = shopifyExportData.slice(i, i + chunkSize);
-                    chunk.forEach(row => {
-                        let skuVal = (shopSkuIdx !== -1 && row[shopSkuIdx]) ? row[shopSkuIdx].toString().trim().toLowerCase() : '';
-                        let titleVal = (shopTitleIdx !== -1 && row[shopTitleIdx]) ? sanitizeTitle(row[shopTitleIdx]) : '';
-                        let handleVal = (shopHandleIdx !== -1 && row[shopHandleIdx]) ? generateSmartHandle(row[shopHandleIdx]) : '';
-
-                        let isMatch = false;
-                        if((matchStrategy === 'sku' || matchStrategy === 'both') && skuVal && redSkusSet.has(skuVal)) isMatch = true;
-                        if((matchStrategy === 'title' || matchStrategy === 'both') && titleVal && redTitlesSet.has(titleVal)) isMatch = true;
-
-                        if(isMatch && handleVal) redHandlesMatched.add(handleVal);
-                    });
-                    await new Promise(r => setTimeout(r, 0));
-                }
-
-                updateProgress(70);
-
-                let updatedShopifyRows = [];
-                for (let i = 0; i < shopifyExportData.length; i += chunkSize) {
-                    let chunk = shopifyExportData.slice(i, i + chunkSize);
-                    chunk.forEach(row => {
-                        let newRow = [...row];
-                        while(newRow.length < shopifyExportHeaders.length) newRow.push('');
-                        let handleVal = (shopHandleIdx !== -1 && newRow[shopHandleIdx]) ? generateSmartHandle(newRow[shopHandleIdx]) : '';
-
-                        if(handleVal && redHandlesMatched.has(handleVal)) {
-                            newRow[statusColIdx] = 'archived';
-                        }
-
-                        let rowObj = {};
-                        shopifyExportHeaders.forEach((hName, idx) => {
-                            rowObj[hName] = newRow[idx] !== undefined ? newRow[idx] : '';
-                        });
-                        updatedShopifyRows.push(rowObj);
-                    });
-                    await new Promise(r => setTimeout(r, 0));
-                }
-
-                processedResults.push({
-                    name: `Shopify_政策下架归档更新_${new Date().toISOString().slice(0,10)}.csv`,
-                    data: updatedShopifyRows
+                data.forEach(item => {
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${new Date(item.created_at).toLocaleString()}</td>
+                        <td><b>${item.file_name}</b></td>
+                        <td>${item.total_count} 件</td>
+                        <td><span class="badge">已处理</span></td>
+                        <td><button class="btn btn-outline btn-sm" onclick='downloadHistoryCSV(${JSON.stringify(item.csv_content)}, "${item.file_name}")'>下载</button></td>
+                    `;
+                    tbody.appendChild(tr);
                 });
-
-                totalArchivedCount += redHandlesMatched.size;
-                totalRowsGenerated += updatedShopifyRows.length;
-                log(`✅ 政策下架比对完毕！标记下架商品数: ${redHandlesMatched.size}`);
-            }
-
-            updateProgress(100);
-            document.getElementById('rowCount').innerText = totalRowsGenerated;
-            document.getElementById('violateCount').innerText = totalArchivedCount;
-            alert(`🎉 批处理完成！处理结果可点击右侧按钮导出！`);
+            } catch(e) {}
         }
 
-        function readFileRowsAsync(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    setTimeout(() => {
-                        let data = new Uint8Array(evt.target.result);
-                        let workbook = XLSX.read(data, { type: 'array' });
-                        let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-                        if(jsonRows.length < 2) resolve({ headers: [], rows: [] });
-                        else resolve({
-                            headers: jsonRows[0].map(h => (h||'').toString().trim()),
-                            rows: jsonRows.slice(1).filter(r => r.length > 0)
-                        });
-                    }, 0);
-                };
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        function handleGlobalTemplateLearning(e) {
-            let files = e.target.files || (e.dataTransfer ? e.dataTransfer.files : null);
-            if(!files || !files[0]) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                let data = new Uint8Array(evt.target.result);
-                let workbook = XLSX.read(data, { type: 'array' });
-                let jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-                if(jsonRows.length < 1) return;
-                globalTemplateHeaders = jsonRows[0].map(h => (h||'').toString().trim());
-                document.getElementById('globalLearnStatusText').innerHTML = `<b style="color:var(--primary);">✨ 已锁定模板 (${globalTemplateHeaders.length} 个字段)</b>`;
-                log(`🧠 学习并锁定模板: ${globalTemplateHeaders.length} 个列字段`);
-            };
-            reader.readAsArrayBuffer(files[0]);
-        }
-
-        function downloadAllResults() {
-            if(processedResults.length === 0) { alert("无导出结果，请先执行处理！"); return; }
-            processedResults.forEach((res, index) => {
-                setTimeout(() => {
-                    let headers = Object.keys(res.data[0]);
-                    let csvText = headers.join(',') + '\n' + res.data.map(r => headers.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-                    const blob = new Blob(['\ufeff' + csvText], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = res.name;
-                    a.click();
-                    log(`💾 成功导出文件: ${res.name}`);
-                }, index * 300);
-            });
+        function downloadHistoryCSV(content, filename) {
+            const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
         }
 
         window.onload = function() {
             switchModule('module1');
-            initGlobalDragAndDrop(); // 初始化拖拽上传代理
+            initSupabase(); // 初始化强登录控制锁
+            initGlobalDragAndDrop(); // 全局拖拽代理注册
         };
     </script>
 </body>
