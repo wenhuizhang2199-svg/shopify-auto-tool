@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopify 汽配/工业品数据处理中心 (纵向多图展开版)</title>
+    <title>Shopify 汽配/工业品数据处理中心 (三板块独立隔离版)</title>
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 引入 SheetJS 支持读取 Excel (.xlsx/.xls) 文件 -->
@@ -34,15 +34,14 @@
         .btn-outline:hover { background: #f1f2f3; }
         .btn-sm { padding: 4px 8px; font-size: 12px; }
 
-        /* 全局模板学习中心 */
-        .global-learn-card { background: #f0fdf4; border: 2px dashed var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
-        .global-learn-header { display: flex; justify-content: space-between; align-items: center; }
-
         /* 主功能导航切换卡 */
         .module-nav { display: flex; gap: 12px; margin-bottom: 24px; }
         .nav-card { flex: 1; background: var(--surface); border: 2px solid var(--border); padding: 16px; border-radius: 10px; cursor: pointer; transition: 0.2s; text-align: center; font-weight: 600; }
         .nav-card:hover { border-color: var(--primary); background: #f0fdf4; }
         .nav-card.active { border-color: var(--primary); background: #e4f5ed; color: var(--primary); }
+
+        /* 板块内专属学习卡 */
+        .module-learn-card { background: #f0fdf4; border: 1.5px dashed var(--primary); border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
 
         /* 登录弹窗 */
         .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
@@ -90,24 +89,12 @@
 
     <div class="container">
         <header>
-            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">☁️ 纵向多图智能生成版</span></h1>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">☁️ 板块学习完全隔离版</span></h1>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span id="userStatus" style="font-size: 13px; color: var(--subtext);">未登录</span>
                 <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn" style="display: none;">退出登录</button>
             </div>
         </header>
-
-        <!-- 🧠 全局通用 Shopify 模板学习中心 -->
-        <div class="global-learn-card">
-            <div class="global-learn-header">
-                <div>
-                    <h3 style="font-size: 16px; color: var(--primary);">🧠 全局 Shopify 官方模板学习中心</h3>
-                    <p style="font-size: 13px; color: var(--subtext);" id="globalLearnStatusText">在此上传你的 Shopify 官方模板表（包含 Product image URL 和 Image position 列），系统将锁定该结构。</p>
-                </div>
-                <button class="btn" onclick="document.getElementById('globalTemplateInput').click()">上传 Shopify 模板表供学习</button>
-                <input type="file" id="globalTemplateInput" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleGlobalTemplateLearning(event)">
-            </div>
-        </div>
 
         <!-- 三大功能导航 -->
         <div class="module-nav">
@@ -124,19 +111,26 @@
 
         <div class="grid">
             <main>
-                <!-- 错误报错警示框 -->
+                <!-- 报错警示框 -->
                 <div class="error-alert-box" id="errorAlertBox">
                     <h4 style="font-weight: 700; margin-bottom: 4px;">⚠️ 数据源校验报错，处理已中断：</h4>
                     <div id="errorAlertContent"></div>
                 </div>
 
-                <!-- 1. 产品上架专属功能区 -->
+                <!-- 1. 产品上架专属面板 -->
                 <div id="panelModule1" class="module-panel">
                     <div class="card">
-                        <div class="card-title">
-                            <span>🛍️ 店铺与模式配置</span>
+                        <!-- 板块1专属学习区 -->
+                        <div class="module-learn-card">
+                            <div>
+                                <h4 style="color:var(--primary); font-size:15px;">🧠 上架模块专属 Shopify 模板表学习</h4>
+                                <p style="font-size:12px; color:var(--subtext);" id="learnStatusModule1">未学习（上传包含正常上架默认值的 Shopify 模版表）</p>
+                            </div>
+                            <button class="btn btn-sm" onclick="document.getElementById('templateInput1').click()">学习上架模板表</button>
+                            <input type="file" id="templateInput1" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleModuleTemplateLearning(event, 'module1')">
                         </div>
 
+                        <div class="card-title">🛍️ 店铺与模式配置 (产品上架)</div>
                         <div class="setting-row">
                             <label>🏪 目标 Shopify 店铺：</label>
                             <select id="shopSelect">
@@ -144,11 +138,10 @@
                                 <option value="Create the impossible">Create the impossible</option>
                             </select>
                         </div>
-
                         <div class="setting-row">
                             <label>🖼️ 图片展开模式：</label>
                             <select id="imageModeSelect">
-                                <option value="auto">✨ 智能自动识别（按原表图片数量自动生成纵向行）</option>
+                                <option value="auto">✨ 智能自动识别（按原表图片数量生成对应纵向行）</option>
                                 <option value="1">固定 1 张图 (1行/商品)</option>
                                 <option value="2">固定 2 张图 (隔2行/商品)</option>
                                 <option value="3">固定 3 张图 (隔3行/商品)</option>
@@ -158,14 +151,11 @@
                             </select>
                         </div>
 
-                        <div class="card-title" style="margin-top: 20px;">
-                            <span>📊 上传待做表的产品数据源表</span>
-                        </div>
-                        <div class="upload-area" onclick="document.getElementById('sourceExcelInput').click()">
+                        <div class="upload-area" onclick="document.getElementById('sourceInput1').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">📄</p>
-                            <p style="font-weight: 600;">点击上传或拖拽原始数据源表 (.xlsx, .xls, .csv)</p>
-                            <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText">包含实际商品标题、型号、价格、多图</p>
-                            <input type="file" id="sourceExcelInput" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
+                            <p style="font-weight: 600;">上传待上架产品的数据源表 (.xlsx, .xls, .csv)</p>
+                            <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText1">包含标题、型号、运费调整后价格、多图</p>
+                            <input type="file" id="sourceInput1" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                         </div>
                     </div>
                 </div>
@@ -173,11 +163,22 @@
                 <!-- 2. 政策违规下架专属面板 -->
                 <div id="panelModule2" class="module-panel" style="display: none;">
                     <div class="card">
-                        <div class="card-title">2. 上传侵权/政策系统下架反馈表</div>
-                        <div class="upload-area" onclick="document.getElementById('archiveInput').click()">
+                        <!-- 板块2专属学习区 -->
+                        <div class="module-learn-card">
+                            <div>
+                                <h4 style="color:var(--primary); font-size:15px;">🧠 政策下架模块专属 Shopify 模板表学习</h4>
+                                <p style="font-size:12px; color:var(--subtext);" id="learnStatusModule2">未学习（上传已填好 Status = archived / 违规标记的下架模版表）</p>
+                            </div>
+                            <button class="btn btn-sm" onclick="document.getElementById('templateInput2').click()">学习下架模板表</button>
+                            <input type="file" id="templateInput2" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleModuleTemplateLearning(event, 'module2')">
+                        </div>
+
+                        <div class="card-title">🚫 政策下架专属文件上传</div>
+                        <div class="upload-area" onclick="document.getElementById('sourceInput2').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">🚫</p>
-                            <p style="font-weight: 600;">拖拽上传违规 SKU 列表文件 (.csv, .xlsx)</p>
-                            <input type="file" id="archiveInput" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
+                            <p style="font-weight: 600;">拖拽上传侵权/政策系统导出之违规结果表 (.csv, .xlsx)</p>
+                            <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText2">仅需读取关联 SKU 或 Handle 列</p>
+                            <input type="file" id="sourceInput2" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                         </div>
                     </div>
                 </div>
@@ -185,22 +186,33 @@
                 <!-- 3. 首图白底替换专属面板 -->
                 <div id="panelModule3" class="module-panel" style="display: none;">
                     <div class="card">
-                        <div class="card-title">3. 上传需要白底图覆盖的数据表</div>
-                        <div class="upload-area" onclick="document.getElementById('whiteInput').click()">
+                        <!-- 板块3专属学习区 -->
+                        <div class="module-learn-card">
+                            <div>
+                                <h4 style="color:var(--primary); font-size:15px;">🧠 白底替换模块专属 Shopify 模板表学习</h4>
+                                <p style="font-size:12px; color:var(--subtext);" id="learnStatusModule3">未学习（上传白底替换用的 Shopify 模版表）</p>
+                            </div>
+                            <button class="btn btn-sm" onclick="document.getElementById('templateInput3').click()">学习白底模板表</button>
+                            <input type="file" id="templateInput3" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleModuleTemplateLearning(event, 'module3')">
+                        </div>
+
+                        <div class="card-title">🖼️ 首图白底覆盖专属文件上传</div>
+                        <div class="upload-area" onclick="document.getElementById('sourceInput3').click()">
                             <p style="font-size: 32px; margin-bottom: 8px;">🖼️</p>
-                            <p style="font-weight: 600;">拖拽上传包含首图链接的表格 (.xlsx, .csv)</p>
-                            <input type="file" id="whiteInput" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
+                            <p style="font-weight: 600;">拖拽上传包含替换图片链接的表格 (.xlsx, .csv)</p>
+                            <p style="font-size: 13px; color: var(--subtext);" id="sourceStatusText3">将自动对应 Product image URL 进行替换</p>
+                            <input type="file" id="sourceInput3" accept=".xlsx, .xls, .csv" onchange="handleSourceUpload(event)">
                         </div>
                     </div>
                 </div>
 
-                <!-- 动态映射绑定面板 -->
+                <!-- 板块独立关联映射面板 -->
                 <div class="card">
                     <div class="card-title">
-                        <span>✍️ 字段对应绑定与必填项设定</span>
+                        <span id="mappingPanelTitle">✍️ 字段对应绑定 (当前板块独立配对)</span>
                         <div>
                             <button class="btn btn-outline btn-sm" onclick="addNewMappingRow()">➕ 添加新映射列</button>
-                            <button class="btn btn-sm" onclick="saveMappingToCloud()">💾 保存当前映射规则</button>
+                            <button class="btn btn-sm" onclick="saveMappingToCloud()">💾 保存本板块映射规则</button>
                         </div>
                     </div>
                     <table class="mapping-table">
@@ -230,7 +242,7 @@
 
                 <div class="card">
                     <div class="card-title">实时处理日志</div>
-                    <div class="log-box" id="logBox">[系统初始化完成] 准备就绪...\n</div>
+                    <div class="log-box" id="logBox">[系统初始化完成] 三大板块已互相独立隔离...\n</div>
                 </div>
             </main>
 
@@ -271,18 +283,36 @@
         let currentModule = 'module1';
         
         let rawSourceData = [], rawSourceHeaders = [];
-        let globalTemplateHeaders = [];
-        let globalTemplateFixedValues = {};
         let mappedResultData = [];
 
-        // 默认映射规则 (兼顾 Product image URL 和 Image Src 命名)
-        let dynamicMappingList = [
-            { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
-            { shopifyCol: 'Title', sourceCol: '标题', required: true },
-            { shopifyCol: 'Variant SKU', sourceCol: '父Sku编码', required: true },
-            { shopifyCol: 'Variant Price', sourceCol: '运费调整后最终价格', required: true },
-            { shopifyCol: 'Product image URL', sourceCol: '描述图片19, 描述图片29, 描述图片32, 描述图片4, 描述图片5, 描述图片6', required: true }
-        ];
+        // 存储三个板块独立的模板底本与固定默认值
+        let moduleTemplates = {
+            'module1': { headers: [], fixedValues: {} },
+            'module2': { headers: [], fixedValues: {} },
+            'module3': { headers: [], fixedValues: {} }
+        };
+
+        // 三大板块预置的独立默认映射关系
+        let defaultMappings = {
+            'module1': [
+                { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
+                { shopifyCol: 'Title', sourceCol: '标题', required: true },
+                { shopifyCol: 'Variant SKU', sourceCol: '父Sku编码', required: true },
+                { shopifyCol: 'Variant Price', sourceCol: '运费调整后最终价格', required: true },
+                { shopifyCol: 'Product image URL', sourceCol: '描述图片19, 描述图片29, 描述图片32, 描述图片4, 描述图片5, 描述图片6', required: true }
+            ],
+            'module2': [
+                { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
+                { shopifyCol: 'Variant SKU', sourceCol: '父Sku编码', required: true },
+                { shopifyCol: 'Status', sourceCol: 'Status', required: false }
+            ],
+            'module3': [
+                { shopifyCol: 'Handle', sourceCol: '父Sku编码', required: true },
+                { shopifyCol: 'Product image URL', sourceCol: '描述图片19', required: true }
+            ]
+        };
+
+        let currentMappingList = [];
 
         function log(msg) {
             const box = document.getElementById('logBox');
@@ -290,6 +320,7 @@
             box.scrollTop = box.scrollHeight;
         }
 
+        // 🔄 切换板块：加载该板块专属的学习模板与映射面板
         function switchModule(modId) {
             currentModule = modId;
             document.querySelectorAll('.nav-card').forEach(c => c.classList.remove('active'));
@@ -298,6 +329,16 @@
             document.querySelectorAll('.module-panel').forEach(p => p.style.display = 'none');
             document.getElementById('panel' + modId.charAt(0).toUpperCase() + modId.slice(1)).style.display = 'block';
 
+            let names = { 'module1': '【产品上架】', 'module2': '【政策下架】', 'module3': '【首图白底】' };
+            document.getElementById('mappingPanelTitle').innerText = `✍️ 字段对应绑定 (${names[modId]}专属)`;
+
+            // 重新重置数据源表与报错提示
+            rawSourceData = [];
+            rawSourceHeaders = [];
+            document.getElementById('errorAlertBox').style.display = 'none';
+
+            loadModuleTemplateFromCloud(modId);
+            loadSavedMappingFromCloud(modId);
             fetchModuleHistory();
         }
 
@@ -316,9 +357,7 @@
                 document.getElementById('userStatus').innerText = `👤 登录账号: ${currentUser.email}`;
                 document.getElementById('logoutBtn').style.display = 'inline-block';
                 
-                loadGlobalLearnedTemplate();
-                loadSavedMappingFromCloud();
-                fetchModuleHistory();
+                switchModule('module1');
             } else {
                 document.getElementById('authModal').style.display = 'flex';
             }
@@ -343,8 +382,8 @@
             location.reload();
         }
 
-        // 🧠 全局学习中心处理函数
-        function handleGlobalTemplateLearning(e) {
+        // 🧠 板块专属学习处理
+        function handleModuleTemplateLearning(e, modId) {
             const file = e.target.files[0];
             if(!file) return;
 
@@ -356,47 +395,48 @@
 
                 if(jsonRows.length < 1) return;
 
-                globalTemplateHeaders = jsonRows[0].map(h => (h||'').toString().trim());
-                globalTemplateFixedValues = {};
+                let headers = jsonRows[0].map(h => (h||'').toString().trim());
+                let fixedValues = {};
 
                 if(jsonRows.length > 1) {
-                    for(let c = 0; c < globalTemplateHeaders.length; c++) {
-                        let colName = globalTemplateHeaders[c];
+                    for(let c = 0; c < headers.length; c++) {
+                        let colName = headers[c];
                         let val = jsonRows[1][c];
-                        if(val !== undefined && val !== '') {
-                            globalTemplateFixedValues[colName] = val;
-                        }
+                        if(val !== undefined && val !== '') fixedValues[colName] = val;
                     }
                 }
+
+                moduleTemplates[modId] = { headers, fixedValues };
 
                 if(supabaseClient && currentUser) {
                     await supabaseClient.from('learning_templates').upsert([{
                         user_id: currentUser.id,
-                        feature_type: 'global_template',
+                        feature_type: `template_${modId}`,
                         template_name: file.name,
-                        mapping_rules: { headers: globalTemplateHeaders, fixedValues: globalTemplateFixedValues },
+                        mapping_rules: { headers, fixedValues },
                         updated_at: new Date()
                     }]);
                 }
 
-                document.getElementById('globalLearnStatusText').innerHTML = `<b style="color:var(--primary);">✨ 已锁定模板：${file.name} (${globalTemplateHeaders.length} 个标准列，含 Product image URL 与 Image position)</b>`;
-                log(`🧠 全局学习成功！成功锁定 ${globalTemplateHeaders.length} 个标准 Shopify 模板列！`);
+                let numStr = modId.slice(-1);
+                document.getElementById(`learnStatus${modId.charAt(0).toUpperCase() + modId.slice(1)}`).innerHTML = `<b style="color:var(--primary);">✨ 已学习该板块模版：${file.name} (${headers.length} 列)</b>`;
+                log(`🧠 [${modId}] 专属学习成功！已被隔离锁定至对应板块！`);
             };
             reader.readAsArrayBuffer(file);
         }
 
-        async function loadGlobalLearnedTemplate() {
+        async function loadModuleTemplateFromCloud(modId) {
             if(!supabaseClient || !currentUser) return;
             const { data } = await supabaseClient
                 .from('learning_templates')
                 .select('*')
-                .eq('feature_type', 'global_template')
+                .eq('feature_type', `template_${modId}`)
                 .single();
 
             if(data && data.mapping_rules) {
-                globalTemplateHeaders = data.mapping_rules.headers || [];
-                globalTemplateFixedValues = data.mapping_rules.fixedValues || {};
-                document.getElementById('globalLearnStatusText').innerHTML = `<b style="color:var(--primary);">✨ 已激活云端模板：${data.template_name || '已锁定规则'} (${globalTemplateHeaders.length} 列)</b>`;
+                moduleTemplates[modId] = data.mapping_rules;
+                let numStr = modId.slice(-1);
+                document.getElementById(`learnStatus${modId.charAt(0).toUpperCase() + modId.slice(1)}`).innerHTML = `<b style="color:var(--primary);">✨ 已激活板块模版：${data.template_name || '已锁定'} (${data.mapping_rules.headers.length} 列)</b>`;
             }
         }
 
@@ -404,11 +444,11 @@
             const tbody = document.getElementById('manualMappingBody');
             tbody.innerHTML = '';
 
-            dynamicMappingList.forEach((item, index) => {
+            currentMappingList.forEach((item, index) => {
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><input type="text" value="${item.shopifyCol}" onchange="updateMappingItem(${index}, 'shopifyCol', this.value)" placeholder="Shopify 目标列"></td>
-                    <td><input type="text" value="${item.sourceCol}" onchange="updateMappingItem(${index}, 'sourceCol', this.value)" placeholder="源列名(多列用逗号隔开)"></td>
+                    <td><input type="text" value="${item.sourceCol}" onchange="updateMappingItem(${index}, 'sourceCol', this.value)" placeholder="源列名"></td>
                     <td><input type="checkbox" ${item.required ? 'checked' : ''} onchange="updateMappingItem(${index}, 'required', this.checked)"> 必须有值</td>
                 `;
                 tbody.appendChild(tr);
@@ -416,11 +456,11 @@
         }
 
         function updateMappingItem(index, key, value) {
-            dynamicMappingList[index][key] = value;
+            currentMappingList[index][key] = value;
         }
 
         function addNewMappingRow() {
-            dynamicMappingList.push({ shopifyCol: '', sourceCol: '', required: false });
+            currentMappingList.push({ shopifyCol: '', sourceCol: '', required: false });
             renderMappingTable();
         }
 
@@ -428,23 +468,25 @@
             if(!supabaseClient || !currentUser) return;
             await supabaseClient.from('learning_templates').upsert([{
                 user_id: currentUser.id,
-                feature_type: currentModule,
-                mapping_rules: dynamicMappingList,
+                feature_type: `mapping_${currentModule}`,
+                mapping_rules: currentMappingList,
                 updated_at: new Date()
             }]);
-            alert("🎉 映射规则已成功保存至云端！");
+            alert(`🎉 [${currentModule}] 专有映射规则已成功上云！`);
         }
 
-        async function loadSavedMappingFromCloud() {
+        async function loadSavedMappingFromCloud(modId) {
             if(!supabaseClient || !currentUser) return;
             const { data } = await supabaseClient
                 .from('learning_templates')
                 .select('*')
-                .eq('feature_type', currentModule)
+                .eq('feature_type', `mapping_${modId}`)
                 .single();
 
             if(data && data.mapping_rules && Array.isArray(data.mapping_rules)) {
-                dynamicMappingList = data.mapping_rules;
+                currentMappingList = data.mapping_rules;
+            } else {
+                currentMappingList = defaultMappings[modId] || [];
             }
             renderMappingTable();
         }
@@ -464,9 +506,11 @@
                 rawSourceHeaders = jsonRows[0].map(h => (h||'').toString().trim());
                 rawSourceData = jsonRows.slice(1).filter(r => r.length > 0);
 
-                log(`✅ 成功读取源表格: ${file.name} (${rawSourceData.length} 行产品)`);
+                log(`✅ 成功读取源表格: ${file.name} (${rawSourceData.length} 行)`);
                 document.getElementById('totalCount').innerText = rawSourceData.length;
-                document.getElementById('sourceStatusText').innerText = `已载入源表: ${file.name}`;
+                
+                let elId = `sourceStatusText${currentModule.slice(-1)}`;
+                document.getElementById(elId).innerText = `已载入源表: ${file.name}`;
                 document.getElementById('errorAlertBox').style.display = 'none';
             };
             reader.readAsArrayBuffer(file);
@@ -477,22 +521,21 @@
             return rawStr.toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         }
 
-        // 🚀 核心：纵向多图生成引擎
+        // 🚀 核心执行引擎（隔离运算）
         async function runProcess() {
-            if(rawSourceData.length === 0) { alert("请先上传待做表的数据源文件！"); return; }
+            if(rawSourceData.length === 0) { alert("请先在当前板块上传待做表的数据源文件！"); return; }
 
             let alertBox = document.getElementById('errorAlertBox');
             let alertContent = document.getElementById('errorAlertContent');
             alertBox.style.display = 'none';
             alertContent.innerHTML = '';
 
-            // 校验机制
             let missingCols = [];
-            dynamicMappingList.forEach(rule => {
+            currentMappingList.forEach(rule => {
                 if(rule.required && rule.sourceCol) {
                     let firstColName = rule.sourceCol.split(',')[0].trim();
                     if(!rawSourceHeaders.includes(firstColName)) {
-                        missingCols.push(`源表格中缺失对应必填列：<b>[${firstColName}]</b>`);
+                        missingCols.push(`源表格中缺失当前板块所需的必填列：<b>[${firstColName}]</b>`);
                     }
                 }
             });
@@ -500,11 +543,12 @@
             if(missingCols.length > 0) {
                 alertBox.style.display = 'block';
                 alertContent.innerHTML = missingCols.join('<br>');
-                log("❌ 校验中断：请补齐源表列头。");
+                log("❌ 校验中断：缺失对应列。");
                 return;
             }
 
-            let finalHeaders = globalTemplateHeaders.length > 0 ? globalTemplateHeaders : [
+            let tInfo = moduleTemplates[currentModule] || { headers: [], fixedValues: {} };
+            let finalHeaders = tInfo.headers.length > 0 ? tInfo.headers : [
                 'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Product Category', 'Type', 'Tags', 'Published',
                 'Option1 Name', 'Option1 Value', 'Option2 Name', 'Option2 Value', 'Option3 Name', 'Option3 Value',
                 'Variant SKU', 'Variant Grams', 'Variant Inventory Tracker', 'Variant Inventory Qty',
@@ -516,17 +560,16 @@
             ];
 
             let selectedShop = document.getElementById('shopSelect').value;
-            let imgMode = document.getElementById('imageModeSelect').value;
+            let imgMode = document.getElementById('imageModeSelect') ? document.getElementById('imageModeSelect').value : 'auto';
             mappedResultData = [];
             let totalExportRows = 0;
 
-            // 锁定图片列和位置列名（兼容不同模板名称）
             let imgUrlColKey = finalHeaders.find(h => h.toLowerCase().includes('image url') || h.toLowerCase() === 'image src') || 'Product image URL';
             let imgPosColKey = finalHeaders.find(h => h.toLowerCase().includes('position')) || 'Image position';
 
             rawSourceData.forEach(row => {
                 let getSourceVal = (sColName) => {
-                    let mapItem = dynamicMappingList.find(m => m.shopifyCol.toLowerCase() === sColName.toLowerCase());
+                    let mapItem = currentMappingList.find(m => m.shopifyCol.toLowerCase() === sColName.toLowerCase());
                     if(!mapItem || !mapItem.sourceCol) return '';
                     let idx = rawSourceHeaders.indexOf(mapItem.sourceCol.trim());
                     return idx !== -1 ? row[idx] : '';
@@ -538,9 +581,8 @@
                 let sku = getSourceVal('Variant SKU') || getSourceVal('SKU');
                 let price = getSourceVal('Variant Price') || getSourceVal('Price');
 
-                // 提取原表多张图片列的 URL
                 let images = [];
-                let imgMapItem = dynamicMappingList.find(m => m.shopifyCol.toLowerCase().includes('image'));
+                let imgMapItem = currentMappingList.find(m => m.shopifyCol.toLowerCase().includes('image'));
                 if(imgMapItem && imgMapItem.sourceCol) {
                     let sourceImgCols = imgMapItem.sourceCol.split(',');
                     sourceImgCols.forEach(cName => {
@@ -549,20 +591,26 @@
                     });
                 }
 
-                let exportImgCount = (imgMode === 'auto') ? (images.length > 0 ? images.length : 1) : parseInt(imgMode);
+                let exportImgCount = (currentModule === 'module1') ? ((imgMode === 'auto') ? (images.length > 0 ? images.length : 1) : parseInt(imgMode)) : 1;
 
-                // 纵向扩展生成多行
                 for(let pos = 1; pos <= exportImgCount; pos++) {
                     let currentImg = images[pos - 1] || '';
-                    let rowObj = {};
+                    if(currentModule === 'module3' && pos === 1 && currentImg) {
+                        currentImg = currentImg.replace(/\.(jpg|png)/i, '_white.$1');
+                    }
 
+                    let rowObj = {};
                     finalHeaders.forEach(colName => {
-                        rowObj[colName] = globalTemplateFixedValues[colName] || '';
+                        rowObj[colName] = tInfo.fixedValues[colName] || '';
                     });
 
                     rowObj['Handle'] = handle;
                     if(rowObj.hasOwnProperty('Vendor')) rowObj['Vendor'] = selectedShop;
-                    if(rowObj.hasOwnProperty('Status')) rowObj['Status'] = 'active';
+                    
+                    // 核心区别：板块 2 (政策下架) 强制设置 Status 为 archived (或学习到的违规状态)
+                    if(rowObj.hasOwnProperty('Status')) {
+                        rowObj['Status'] = (currentModule === 'module2') ? 'archived' : (tInfo.fixedValues['Status'] || 'active');
+                    }
 
                     if(pos === 1) {
                         if(rowObj.hasOwnProperty('Title')) rowObj['Title'] = rawTitle;
@@ -579,7 +627,6 @@
                         if(rowObj.hasOwnProperty('Price')) rowObj['Price'] = '';
                     }
 
-                    // 核心：纵向填入图片 URL 和 对应递增的数字 Position (1, 2, 3...)
                     if(rowObj.hasOwnProperty(imgUrlColKey)) rowObj[imgUrlColKey] = currentImg;
                     if(rowObj.hasOwnProperty(imgPosColKey)) rowObj[imgPosColKey] = pos;
 
@@ -589,14 +636,16 @@
             });
 
             document.getElementById('rowCount').innerText = totalExportRows;
-            log(`🎉 成功！已自动将图片纵向展开，并在【${imgPosColKey}】列填入 1,2,3... 数字，共生成 ${totalExportRows} 行文件！`);
+            log(`🎉 [${currentModule}] 顺利导出！处理并成功整合 ${totalExportRows} 行符合该板块专属规则的数据！`);
 
             if(supabaseClient && currentUser) {
                 let csvText = finalHeaders.join(',') + '\n' + mappedResultData.map(r => finalHeaders.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+                let moduleTagNames = { 'module1': 'Shopify上架表', 'module2': '违规下架归档表', 'module3': '首图白底表' };
+                
                 await supabaseClient.from('user_history_records').insert([{
                     user_id: currentUser.id,
                     feature_type: currentModule,
-                    file_name: `Shopify上架表_${selectedShop}_${new Date().toISOString().slice(0,10)}.csv`,
+                    file_name: `${moduleTagNames[currentModule]}_${selectedShop}_${new Date().toISOString().slice(0,10)}.csv`,
                     total_count: rawSourceData.length,
                     csv_content: csvText
                 }]);
@@ -638,7 +687,8 @@
             let selectedShop = document.getElementById('shopSelect').value;
             let headers = Object.keys(mappedResultData[0]);
             let csvText = headers.join(',') + '\n' + mappedResultData.map(r => headers.map(h => `"${(r[h]||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-            downloadHistoryCSV(csvText, `Shopify_Export_${selectedShop}_${new Date().toISOString().slice(0,10)}.csv`);
+            let moduleTagNames = { 'module1': 'Shopify上架表', 'module2': '违规下架归档表', 'module3': '首图白底表' };
+            downloadHistoryCSV(csvText, `${moduleTagNames[currentModule]}_${selectedShop}_${new Date().toISOString().slice(0,10)}.csv`);
         }
 
         function downloadHistoryCSV(content, filename) {
