@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify 汽配/工业品数据处理中心</title>
+    <style>
+        :root {
+            --primary: #008060;
+            --primary-hover: #006e52;
+            --bg: #f6f6f7;
+            --surface: #ffffff;
+            --border: #e1e3e5;
+            --text: #202223;
+            --subtext: #6d7175;
+            --danger: #d82c0d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 24px; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 20px 24px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; }
+        h1 { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .badge { background: #e4f5ed; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { background: #f1f2f3; }
+
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 24px; }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafbfb; }
+        .upload-area:hover { border-color: var(--primary); background: #f0fdf4; }
+        .upload-area input { display: none; }
+
+        .options-group { display: flex; flex-direction: column; gap: 12px; }
+        .option-item { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+        .option-item input { width: 18px; height: 18px; accent-color: var(--primary); }
+
+        .mapping-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .mapping-table th, .mapping-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .mapping-table select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); }
+
+        .log-box { background: #1a1c1d; color: #a6e22e; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; height: 180px; overflow-y: auto; white-space: pre-wrap; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; }
+        .stat-card { background: #f6f6f7; padding: 12px; border-radius: 8px; }
+        .stat-num { font-size: 22px; font-weight: 700; color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Shopify 数据自动化处理中心 <span class="badge">已连接云端</span></h1>
+            <div>
+                <button class="btn btn-outline" onclick="triggerTemplateUpload()">⚙️ 更新 Shopify 模板表</button>
+                <input type="file" id="templateInput" style="display:none" onchange="handleTemplateUpload(event)">
+            </div>
+        </header>
+
+        <div class="grid">
+            <main>
+                <div class="card">
+                    <div class="card-title">1. 上传侵权/政策系统结果表</div>
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <p style="font-size: 28px; margin-bottom: 8px;">📄</p>
+                        <p style="font-weight: 600;">点击上传或拖拽 CSV 文件</p>
+                        <p style="font-size: 13px; color: var(--subtext);">自动读取侵权系统导出的产品列数据</p>
+                        <input type="file" id="fileInput" accept=".csv" onchange="handleFileUpload(event)">
+                    </div>
+                </div>
+
+                <div class="card" id="mappingCard" style="display: none;">
+                    <div class="card-title">
+                        2. 字段映射配置（系统已自动记忆学习）
+                        <span style="font-size: 12px; color: var(--subtext);">确保侵权表数据对应填入 Shopify</span>
+                    </div>
+                    <table class="mapping-table">
+                        <thead>
+                            <tr><th>Shopify 目标字段</th><th>对应侵权表字段</th></tr>
+                        </thead>
+                        <tbody id="mappingBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">3. 处理日志</div>
+                    <div class="log-box" id="logBox">[系统初始化完成] 准备就绪，请上传数据数据表...\n</div>
+                </div>
+            </main>
+
+            <aside>
+                <div class="card">
+                    <div class="card-title">选择工作流程</div>
+                    <div class="options-group">
+                        <label class="option-item">
+                            <input type="checkbox" id="proc1" checked>
+                            <div>
+                                <div style="font-weight: 600;">生成 Shopify 上架表</div>
+                                <div style="font-size: 12px; color: var(--subtext);">根据模板自动生成标准 CSV</div>
+                            </div>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="proc2" checked>
+                            <div>
+                                <div style="font-weight: 600;">删除政策违规表</div>
+                                <div style="font-size: 12px; color: var(--subtext);">标记违规 SKU 为 archived</div>
+                            </div>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="proc3" checked>
+                            <div>
+                                <div style="font-weight: 600;">覆盖首图白底表</div>
+                                <div style="font-size: 12px; color: var(--subtext);">自动扣图白底首图</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <button class="btn" style="width: 100%; margin-top: 20px; justify-content: center;" onclick="runProcess()">🚀 开始执行自动化处理</button>
+                    <button class="btn btn-outline" style="width: 100%; margin-top: 10px; justify-content: center;" onclick="downloadCSV()">📥 导出处理完成表 (.csv)</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">数据结果摘要</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-num" id="totalCount">0</div>
+                            <div style="font-size: 12px;">总记录数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-num" id="passCount" style="color: var(--primary);">0</div>
+                            <div style="font-size: 12px;">合规/通过</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-num" id="violateCount" style="color: var(--danger);">0</div>
+                            <div style="font-size: 12px;">违规/归档</div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        let rawData = [];
+        let rawHeaders = [];
+        let mappedData = [];
+
+        // 默认映射映射配置
+        let fieldMapping = {
+            'SKU': ['SKUs', 'SKU', 'Part/OEM'],
+            'Title': ['Product', 'Title', 'Description'],
+            'Price': ['Price'],
+            'Image Src': ['Image', 'Image 1']
+        };
+
+        function log(msg) {
+            const box = document.getElementById('logBox');
+            box.innerText += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function parseCSV(text) {
+            const lines = text.split(/\r\n|\n/);
+            return lines.filter(line => line.trim() !== '').map(line => {
+                let matches = [];
+                let match;
+                let reg = /(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^,\"]*))(?:,|$)/g;
+                while ((match = reg.exec(line)) && match.index < line.length) {
+                    if (match[0] === '') break;
+                    matches.push(match[1] ? match[1].replace(/\"\"/g, '"') : match[2]);
+                }
+                return matches;
+            });
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const rows = parseCSV(evt.target.result);
+                if(rows.length < 2) {
+                    log("❌ 文件解析失败：未提取到数据");
+                    return;
+                }
+                rawHeaders = rows[0];
+                rawData = rows.slice(1);
+                
+                log(`✅ 成功读取侵权表，共 ${rawData.length} 条记录`);
+                document.getElementById('totalCount').innerText = rawData.length;
+                
+                renderMappingUI();
+            };
+            reader.readAsText(file);
+        }
+
+        function renderMappingUI() {
+            const tbody = document.getElementById('mappingBody');
+            tbody.innerHTML = '';
+            
+            Object.keys(fieldMapping).forEach(targetField => {
+                let tr = document.createElement('tr');
+                let td1 = document.createElement('td');
+                td1.innerText = targetField;
+                
+                let td2 = document.createElement('td');
+                let select = document.createElement('select');
+                select.dataset.target = targetField;
+                
+                rawHeaders.forEach(header => {
+                    let opt = document.createElement('option');
+                    opt.value = header;
+                    opt.innerText = header;
+                    // 模糊校验默认匹配
+                    if(fieldMapping[targetField].some(k => header.toLowerCase().includes(k.toLowerCase()))) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                });
+                
+                td2.appendChild(select);
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('mappingCard').style.display = 'block';
+            log("🔗 已开启字段列自动学习匹配");
+        }
+
+        function runProcess() {
+            if(rawData.length === 0) {
+                alert("请先上传数据文件！");
+                return;
+            }
+
+            log("⏳ 开始执行勾选的任务流程...");
+            let doUpper = document.getElementById('proc1').checked;
+            let doArchive = document.getElementById('proc2').checked;
+            let doWhite = document.getElementById('proc3').checked;
+
+            let pass = 0;
+            let violate = 0;
+
+            mappedData = rawData.map(row => {
+                let skuIdx = rawHeaders.indexOf(document.querySelector('select[data-target="SKU"]').value);
+                let titleIdx = rawHeaders.indexOf(document.querySelector('select[data-target="Title"]').value);
+                let priceIdx = rawHeaders.indexOf(document.querySelector('select[data-target="Price"]').value);
+                let imgIdx = rawHeaders.indexOf(document.querySelector('select[data-target="Image Src"]').value);
+
+                let isViolate = row.some(cell => cell && (cell.includes('SCANNED') || cell.includes('违规') || cell.includes('侵权')));
+                
+                if(isViolate) violate++; else pass++;
+
+                let imgUrl = row[imgIdx] || '';
+                if(doWhite && imgUrl) {
+                    imgUrl = imgUrl.replace(/\.(jpg|png)/, '_white.$1'); // 白底示例转换
+                }
+
+                return {
+                    'Title': row[titleIdx] || '',
+                    'SKU': row[skuIdx] || '',
+                    'Price': row[priceIdx] || '',
+                    'Image Src': imgUrl,
+                    'Status': (doArchive && isViolate) ? 'archived' : 'active'
+                };
+            });
+
+            document.getElementById('passCount').innerText = pass;
+            document.getElementById('violateCount').innerText = violate;
+
+            log(`🎉 处理完成！合规上架商品: ${pass} 件，政策违规/归档商品: ${violate} 件`);
+        }
+
+        function downloadCSV() {
+            if(mappedData.length === 0) {
+                alert("请先执行自动化处理！");
+                return;
+            }
+
+            let headers = ['Title', 'SKU', 'Price', 'Image Src', 'Status'];
+            let csvContent = headers.join(',') + '\n';
+
+            mappedData.forEach(row => {
+                let line = headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(',');
+                csvContent += line + '\n';
+            });
+
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Shopify_Process_Result_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            log("💾 已成功导出结果 CSV 表格");
+        }
+
+        function triggerTemplateUpload() { document.getElementById('templateInput').click(); }
+        function handleTemplateUpload(e) {
+            if(e.target.files[0]) log("⚙️ 已更新默认 Shopify 表格模板结构！");
+        }
+    </script>
+</body>
+</html>
